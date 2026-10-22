@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\CustomerResource;
+use App\Http\Resources\Api\InvoiceResource;
+use App\Models\Customer;
+use App\Models\Invoice;
+use App\Services\ActivationCodeService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+
+class AuthController extends Controller
+{
+    private const GENERIC_ERROR = 'Data yang dimasukkan tidak valid atau kode salah.';
+
+    /**
+     * POST /api/v1/auth/activate
+     * Verifikasi customer_code + phone + activation_code, set password, issue token.
+     */
+    public function activate(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'customer_code'         => ['required', 'string', 'max:20'],
+            'phone'                 => ['required', 'string', 'max:20'],
+            'activation_code'       => ['required', 'string'],
+            'password'              => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            'device_name'           => ['required', 'string', 'max:100'],
+        ], [
+            'password.min'      => 'Password minimal 8 karakter.',
+            'password.letters'  => 'Password harus mengandung huruf.',
+            'password.numbers'  => 'Password harus mengandung angka.',
+            'password.confirmed'=> 'Konfirmasi password tidak cocok.',
+        ]);
+
+        // Always use SAME generic error — prevents user enumeration
+        $fail = fn () => response()->json(['message' => self::GENERIC_ERROR], 422);
+
+        $customer = Customer::where('customer_code', strtoupper($data['customer_code']))->first();
+        if (! $customer) return $fail();
+
+        // Normalize phone and compare
+        $normalizedPhone = \App\Http\Requests\StoreCustomerRequest::normalizePhone($data['phone']);
+        if ($customer->phone !== $normalizedPhone) return $fail();
+
+        // Try verify (raises activation_attempts on fail, throws on expired/locked)
+        try {
+            $ok = ActivationCodeService::verify($customer, $data['activation_code']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if (! $ok) return $fail();
+
+        // Consume code, set password, revoke old tokens, issue new token
+        ActivationCodeService::consume($customer);
+
+        $customer->forceFill(['password' => $data['password']])->save();
+        $customer->tokens()->delete();
+
+        $token = $customer->createToken($data['device_name'], ['customer'], now()->addDays(30));
+
+        return response()->json([
+            'token'   => $token->plainTextToken,
+            'profile' => new CustomerResource($customer->fresh()),
+        ]);
+    }
+
+    /**
+     * POST /api/v1/auth/login
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'customer_code' => ['required', 'string', 'max:20'],
+            'password'      => ['required', 'string'],
+            'device_name'   => ['required', 'string', 'max:100'],
+        ]);
+
+        $genericFail = response()->json(['message' => 'Kode pelanggan atau password salah.'], 401);
+
+        $customer = Customer::where('customer_code', strtoupper($data['customer_code']))->first();
+        if (! $customer || ! $customer->password || ! Hash::check($data['password'], $customer->password)) {
+            return $genericFail;
+        }
+        if (! $customer->activated_at) {
+            return $genericFail; // not yet activated
+        }
+        if ($customer->service_status === 'INACTIVE') {
+            return response()->json(['message' => 'Akun Anda tidak aktif. Hubungi layanan pelanggan.'], 403);
+        }
+        // SUSPENDED: allowed to login (can see & pay bills)
+
+        $customer->tokens()->delete(); // single session per customer
+        $token = $customer->createToken($data['device_name'], ['customer'], now()->addDays(30));
+
+        return response()->json([
+            'token'   => $token->plainTextToken,
+            'profile' => new CustomerResource($customer),
+        ]);
+    }
+
+    /**
+     * POST /api/v1/auth/logout
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logout berhasil.']);
+    }
+}

@@ -15,7 +15,7 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    private const GENERIC_ERROR = 'Data yang dimasukkan tidak valid atau kode salah.';
+    private const ACTIVATION_ERROR = 'Kode tidak valid atau sudah tidak berlaku. Hubungi admin untuk kode baru.';
 
     /**
      * POST /api/v1/auth/activate
@@ -37,7 +37,7 @@ class AuthController extends Controller
         ]);
 
         // Always use SAME generic error — prevents user enumeration
-        $fail = fn () => response()->json(['message' => self::GENERIC_ERROR], 422);
+        $fail = fn () => response()->json(['message' => self::ACTIVATION_ERROR], 422);
 
         $customer = Customer::where('customer_code', strtoupper($data['customer_code']))->first();
         if (! $customer) return $fail();
@@ -46,11 +46,11 @@ class AuthController extends Controller
         $normalizedPhone = \App\Http\Requests\StoreCustomerRequest::normalizePhone($data['phone']);
         if ($customer->phone !== $normalizedPhone) return $fail();
 
-        // Try verify (raises activation_attempts on fail, throws on expired/locked)
+        // Try verify
         try {
             $ok = ActivationCodeService::verify($customer, $data['activation_code']);
-        } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable) {
+            return $fail();
         }
 
         if (! $ok) return $fail();
@@ -64,8 +64,10 @@ class AuthController extends Controller
         $token = $customer->createToken($data['device_name'], ['customer'], now()->addDays(30));
 
         return response()->json([
-            'token'   => $token->plainTextToken,
-            'profile' => new CustomerResource($customer->fresh()),
+            'data' => [
+                'token'   => $token->plainTextToken,
+                'profile' => new CustomerResource($customer->fresh()),
+            ],
         ]);
     }
 
@@ -94,12 +96,22 @@ class AuthController extends Controller
         }
         // SUSPENDED: allowed to login (can see & pay bills)
 
-        $customer->tokens()->delete(); // single session per customer
+        // Multi-device: maximum 5 active tokens. Prune oldest tokens if limit reached.
+        $existingTokens = $customer->tokens()->orderBy('created_at')->get();
+        if ($existingTokens->count() >= 5) {
+            $toDeleteCount = ($existingTokens->count() - 5) + 1;
+            $customer->tokens()
+                ->whereIn('id', $existingTokens->take($toDeleteCount)->pluck('id'))
+                ->delete();
+        }
+
         $token = $customer->createToken($data['device_name'], ['customer'], now()->addDays(30));
 
         return response()->json([
-            'token'   => $token->plainTextToken,
-            'profile' => new CustomerResource($customer),
+            'data' => [
+                'token'   => $token->plainTextToken,
+                'profile' => new CustomerResource($customer),
+            ],
         ]);
     }
 

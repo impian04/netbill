@@ -28,7 +28,7 @@
             <div>
                 Format: <strong>.xlsx</strong> atau <strong>.csv</strong> &middot;
                 Maks: <strong>5 MB</strong> &middot;
-                Kolom wajib: ID Pelanggan, Nama, Alamat, Tanggal Mulai, Jenis Tagihan, Paket, Periode, Nominal, Status.
+                Kolom wajib: ID Pelanggan, Nama, Alamat, Tanggal Mulai, Jenis Tagihan, Paket, Periode, Nominal, Status. Kolom opsional: Nomor Telepon, Status Layanan, Jatuh Tempo (YYYY-MM-DD).
                 <br>Periode: format <code>2026-10</code> atau <code>Oktober 2026</code>.
                 Status: <code>PAID</code> / <code>UNPAID</code> (atau Lunas / Belum Bayar).
             </div>

@@ -31,10 +31,11 @@ class StoreInvoiceRequest extends FormRequest
     {
         $customerId = $this->route('customer')->id;
 
-        return [
-            'period'          => ['required', 'date', Rule::unique('invoices')->where('customer_id', $customerId)],
-            'deferred_amount' => ['required', 'integer', 'min:0', 'max:999999999999'],
-            'status'          => ['required', Rule::in(['PAID', 'UNPAID'])],
+            'period'            => ['required', 'date', Rule::unique('invoices')->where('customer_id', $customerId)],
+            'deferred_amount'   => ['required', 'integer', 'min:0', 'max:999999999999'],
+            'status'            => ['required', Rule::in(['PAID', 'UNPAID'])],
+            'due_date'          => ['nullable', 'date'],
+            'payment_reference' => ['nullable', 'string', 'max:100'],
         ];
     }
 

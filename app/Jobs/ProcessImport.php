@@ -247,12 +247,19 @@ class ProcessImport implements ShouldQueue
         );
 
         // Upsert invoice
+        $dueDateRaw = trim((string) ($row['jatuh_tempo'] ?? $row['due_date'] ?? ''));
+        $dueDate    = $dueDateRaw !== '' ? RowValidator::parseFlexibleDate($dueDateRaw) : null;
+
         $invoiceData = [
             'customer_id'     => $customer->id,
             'period'          => $period,
             'deferred_amount' => $amount,
             'status'          => $status,
         ];
+
+        if ($dueDate !== null) {
+            $invoiceData['due_date'] = $dueDate;
+        }
 
         if ($existingInvoice) {
             $existingInvoice->update($invoiceData);

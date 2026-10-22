@@ -16,20 +16,20 @@ class SupportController extends Controller
             ->pluck('value', 'key');
 
         return response()->json([
-            'contacts' => [
+            'data' => [
                 [
                     'category' => 'connection',
-                    'label'    => 'Gangguan Koneksi',
+                    'label'    => 'Masalah Koneksi',
                     'phone'    => $rows['noc_connection_wa'] ?? null,
                 ],
                 [
                     'category' => 'payment',
-                    'label'    => 'Pembayaran',
+                    'label'    => 'Masalah Pembayaran',
                     'phone'    => $rows['noc_payment_wa'] ?? null,
                 ],
                 [
                     'category' => 'installation',
-                    'label'    => 'Pemasangan Baru',
+                    'label'    => 'Bantuan Pemasangan/Pemasaran',
                     'phone'    => $rows['noc_installation_wa'] ?? null,
                 ],
             ],

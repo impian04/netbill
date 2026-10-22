@@ -113,6 +113,10 @@
             <span class="text-muted small">
                 @if ($customer->activationStatus() === 'active')
                     Membuat kode baru akan <strong>mencabut akses login</strong> pelanggan.
+                @elseif ($customer->activationStatus() === 'locked_temporary')
+                    Pelanggan salah memasukkan kode 5×. Terkunci sementara hingga {{ $customer->activation_locked_until?->locale('id')->isoFormat('HH:mm') }}.
+                @elseif ($customer->activationStatus() === 'locked_permanent')
+                    Pelanggan salah memasukkan kode 20×. Akun terkunci, silakan buat kode aktivasi baru.
                 @else
                     Pelanggan belum bisa login ke aplikasi mobile.
                 @endif

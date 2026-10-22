@@ -23,12 +23,20 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // API: auth endpoints (activate + login) — 5/min per IP + per customer_code
+        // API: auth endpoints (activate + login) — 5/min per customer_code + IP combo, 30/min per IP
         RateLimiter::for('api_auth', function (Request $request) {
-            $key = $request->ip() . '|' . strtoupper((string) $request->input('customer_code', ''));
-            return Limit::perMinute(5)->by($key)->response(function () {
+            $code = strtoupper(trim((string) $request->input('customer_code', '')));
+            $ip   = $request->ip();
+            $comboKey = $code ? "{$ip}|{$code}" : $ip;
+
+            $responseCallback = function () {
                 return response()->json(['message' => 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.'], 429);
-            });
+            };
+
+            return [
+                Limit::perMinute(5)->by('combo:' . $comboKey)->response($responseCallback),
+                Limit::perMinute(30)->by('ip:' . $ip)->response($responseCallback),
+            ];
         });
 
         // API: authenticated endpoints — 60/min per token

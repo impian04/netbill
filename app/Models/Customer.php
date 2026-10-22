@@ -31,11 +31,12 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
-            'subscribed_at'         => 'date',
-            'activated_at'          => 'datetime',
-            'activation_expires_at' => 'datetime',
-            'activation_attempts'   => 'integer',
-            'password'              => 'hashed',
+            'subscribed_at'           => 'date',
+            'activated_at'            => 'datetime',
+            'activation_expires_at'   => 'datetime',
+            'activation_locked_until' => 'datetime',
+            'activation_attempts'     => 'integer',
+            'password'                => 'hashed',
         ];
     }
 
@@ -53,8 +54,11 @@ class Customer extends Model
 
     public function activationStatus(): string
     {
-        if ($this->activation_attempts >= 5) {
-            return 'locked';
+        if ($this->activation_attempts >= \App\Services\ActivationCodeService::MAX_ATTEMPTS) {
+            return 'locked_permanent';
+        }
+        if ($this->activation_locked_until && $this->activation_locked_until->isFuture()) {
+            return 'locked_temporary';
         }
         if ($this->activated_at !== null && $this->password !== null) {
             return 'active';
@@ -71,24 +75,26 @@ class Customer extends Model
     public function activationStatusLabel(): string
     {
         return match ($this->activationStatus()) {
-            'none'    => 'Belum Aktivasi',
-            'pending' => 'Kode Aktif s.d. ' . $this->activation_expires_at?->locale('id')->isoFormat('D MMM YYYY HH:mm'),
-            'expired' => 'Kode Kedaluwarsa',
-            'locked'  => 'Terkunci (5× salah)',
-            'active'  => 'Sudah Aktif',
-            default   => '-',
+            'none'             => 'Belum Aktivasi',
+            'pending'          => 'Kode Aktif s.d. ' . $this->activation_expires_at?->locale('id')->isoFormat('D MMM YYYY HH:mm'),
+            'expired'          => 'Kode Kedaluwarsa',
+            'locked_temporary' => 'Terkunci sementara s.d. ' . $this->activation_locked_until?->locale('id')->isoFormat('HH:mm'),
+            'locked_permanent' => 'Terkunci, butuh kode baru',
+            'active'           => 'Sudah Aktif',
+            default            => '-',
         };
     }
 
     public function activationStatusColor(): string
     {
         return match ($this->activationStatus()) {
-            'none'    => 'secondary',
-            'pending' => 'info',
-            'expired' => 'warning',
-            'locked'  => 'danger',
-            'active'  => 'success',
-            default   => 'secondary',
+            'none'             => 'secondary',
+            'pending'          => 'info',
+            'expired'          => 'warning',
+            'locked_temporary' => 'warning',
+            'locked_permanent' => 'danger',
+            'active'           => 'success',
+            default            => 'secondary',
         };
     }
 

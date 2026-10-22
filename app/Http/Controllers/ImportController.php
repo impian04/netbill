@@ -38,17 +38,17 @@ class ImportController extends Controller
         $headers = [
             'ID Pelanggan', 'Nama', 'Nomor Telepon', 'Alamat',
             'Tanggal Mulai Berlangganan', 'Jenis Tagihan', 'Paket', 'Status Layanan',
-            'Periode', 'Nominal Ditangguhkan', 'Status',
+            'Periode', 'Nominal Ditangguhkan', 'Status', 'Jatuh Tempo',
         ];
         $example = [
             'SLX-GS-00001', 'Budi Santoso', '628123456789',
             'Jl. Merdeka No. 10, Kel. Sukamaju',
-            '2023-01-15', 'Bulanan', '10 Mbps', 'ACTIVE', '2026-10', '220000', 'UNPAID',
+            '2023-01-15', 'Bulanan', '10 Mbps', 'ACTIVE', '2026-10', '220000', 'UNPAID', '2026-10-20',
         ];
         $example2 = [
             'SLX-GS-00002', 'Siti Rahayu', '628987654321',
             'Jl. Pahlawan No. 5, RT 02/03',
-            '2022-06-01', 'Bulanan', '20 Mbps', 'ACTIVE', '2026-10', '330000', 'PAID',
+            '2022-06-01', 'Bulanan', '20 Mbps', 'ACTIVE', '2026-10', '330000', 'PAID', '',
         ];
 
         return response()->streamDownload(function () use ($headers, $example, $example2) {

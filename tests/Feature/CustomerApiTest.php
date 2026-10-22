@@ -14,6 +14,8 @@ class CustomerApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const ACTIVATION_ERROR = 'Kode tidak valid atau sudah tidak berlaku. Hubungi admin untuk kode baru.';
+
     // ─────────────────────────────────────────────────────────────
     // Area 1: Aktivasi
     // ─────────────────────────────────────────────────────────────
@@ -36,7 +38,7 @@ class CustomerApiTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['token', 'profile' => ['customer_code', 'name', 'phone']]);
+            ->assertJsonStructure(['data' => ['token', 'profile' => ['customer_code', 'name', 'phone']]]);
 
         $customer->refresh();
         $this->assertNotNull($customer->activated_at);
@@ -62,7 +64,7 @@ class CustomerApiTest extends TestCase
             'device_name'           => 'Phone1',
         ])->assertStatus(200);
 
-        // Second activation with the same code must fail
+        // Second activation with the same code must return generic 422 error
         $second = $this->postJson('/api/v1/auth/activate', [
             'customer_code'         => $customer->customer_code,
             'phone'                 => '628123456789',
@@ -73,7 +75,7 @@ class CustomerApiTest extends TestCase
         ]);
 
         $second->assertStatus(422)
-            ->assertJson(['message' => 'Data yang dimasukkan tidak valid atau kode salah.']);
+            ->assertJson(['message' => self::ACTIVATION_ERROR]);
     }
 
     public function test_activation_code_expired_fails(): void
@@ -95,31 +97,37 @@ class CustomerApiTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-            ->assertJson(['message' => 'Kode aktivasi sudah kedaluwarsa.']);
+            ->assertJson(['message' => self::ACTIVATION_ERROR]);
     }
 
-    public function test_activation_locked_after_five_failed_attempts(): void
+    public function test_activation_temporarily_locked_after_five_failed_attempts(): void
     {
         $customer = Customer::factory()->create(['phone' => '628123456789']);
         $plainCode = ActivationCodeService::generate($customer);
 
-        // 1 wrong attempt increments attempts counter
-        $this->postJson('/api/v1/auth/activate', [
-            'customer_code'         => $customer->customer_code,
-            'phone'                 => '628123456789',
-            'activation_code'       => 'WRONGCOD',
-            'password'              => 'Rahasia123!',
-            'password_confirmation' => 'Rahasia123!',
-            'device_name'           => 'Phone1',
-        ])->assertStatus(422);
+        // 5 wrong attempts trigger temporary lock (15 minutes)
+        for ($i = 1; $i <= 5; $i++) {
+            $this->postJson('/api/v1/auth/activate', [
+                'customer_code'         => $customer->customer_code,
+                'phone'                 => '628123456789',
+                'activation_code'       => 'WRONGCOD' . $i,
+                'password'              => 'Rahasia123!',
+                'password_confirmation' => 'Rahasia123!',
+                'device_name'           => 'Phone1',
+            ])->assertStatus(422)
+                ->assertJson(['message' => self::ACTIVATION_ERROR]);
+        }
 
         $customer->refresh();
-        $this->assertEquals(1, $customer->activation_attempts);
+        $this->assertEquals(5, $customer->activation_attempts);
+        $this->assertNotNull($customer->activation_locked_until);
+        $this->assertTrue($customer->activation_locked_until->isFuture());
+        $this->assertEquals('locked_temporary', $customer->activationStatus());
 
-        // Simulate reaching 5 failed attempts
-        $customer->forceFill(['activation_attempts' => 5])->save();
+        // Clear rate limiter cache so the 6th call tests the service temporary lock, not HTTP rate limit
+        cache()->flush();
 
-        // Even with the correct code, attempt after locked must fail
+        // Even with correct code, attempt during lock window must fail with same generic error
         $response = $this->postJson('/api/v1/auth/activate', [
             'customer_code'         => $customer->customer_code,
             'phone'                 => '628123456789',
@@ -130,7 +138,34 @@ class CustomerApiTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-            ->assertJson(['message' => 'Kode terkunci. Minta admin buat kode baru.']);
+            ->assertJson(['message' => self::ACTIVATION_ERROR]);
+    }
+
+    public function test_activation_permanently_locked_after_one_hundred_failed_attempts(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '628123456789']);
+        $plainCode = ActivationCodeService::generate($customer);
+
+        // Simulate reaching 100 failed attempts (permanent lock until admin regenerates)
+        $customer->forceFill([
+            'activation_attempts'     => ActivationCodeService::MAX_ATTEMPTS,
+            'activation_locked_until' => null, // Lock window expired but MAX_ATTEMPTS reached
+        ])->save();
+
+        $this->assertEquals('locked_permanent', $customer->activationStatus());
+
+        // Attempt with correct code must fail
+        $response = $this->postJson('/api/v1/auth/activate', [
+            'customer_code'         => $customer->customer_code,
+            'phone'                 => '628123456789',
+            'activation_code'       => $plainCode,
+            'password'              => 'Rahasia123!',
+            'password_confirmation' => 'Rahasia123!',
+            'device_name'           => 'Phone1',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['message' => self::ACTIVATION_ERROR]);
     }
 
     public function test_activation_returns_generic_error_on_mismatched_phone_or_customer(): void
@@ -149,7 +184,7 @@ class CustomerApiTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-            ->assertJson(['message' => 'Data yang dimasukkan tidak valid atau kode salah.']);
+            ->assertJson(['message' => self::ACTIVATION_ERROR]);
 
         // Non-existent customer code
         $resUnknown = $this->postJson('/api/v1/auth/activate', [
@@ -162,11 +197,11 @@ class CustomerApiTest extends TestCase
         ]);
 
         $resUnknown->assertStatus(422)
-            ->assertJson(['message' => 'Data yang dimasukkan tidak valid atau kode salah.']);
+            ->assertJson(['message' => self::ACTIVATION_ERROR]);
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Area 2: Login
+    // Area 2: Login & Multi-Device Tokens
     // ─────────────────────────────────────────────────────────────
 
     public function test_login_fails_with_wrong_password(): void
@@ -186,7 +221,7 @@ class CustomerApiTest extends TestCase
             ->assertJson(['message' => 'Kode pelanggan atau password salah.']);
     }
 
-    public function test_login_rejected_when_customer_is_inactive(): void
+    public function test_login_inactive_returns_401_on_wrong_password_and_403_on_correct_password(): void
     {
         $customer = Customer::factory()->create([
             'password'       => Hash::make('Rahasia123!'),
@@ -194,13 +229,52 @@ class CustomerApiTest extends TestCase
             'service_status' => 'INACTIVE',
         ]);
 
-        $response = $this->postJson('/api/v1/auth/login', [
+        // Wrong password on INACTIVE account MUST still return generic 401 (not revealing account state)
+        $wrongPass = $this->postJson('/api/v1/auth/login', [
+            'customer_code' => $customer->customer_code,
+            'password'      => 'WrongPassword!',
+            'device_name'   => 'Phone1',
+        ]);
+
+        $wrongPass->assertStatus(401)
+            ->assertJson(['message' => 'Kode pelanggan atau password salah.']);
+
+        // Correct password on INACTIVE account returns 403
+        $correctPass = $this->postJson('/api/v1/auth/login', [
             'customer_code' => $customer->customer_code,
             'password'      => 'Rahasia123!',
             'device_name'   => 'Phone1',
         ]);
 
-        $response->assertStatus(403)
+        $correctPass->assertStatus(403)
+            ->assertJson(['message' => 'Akun Anda tidak aktif. Hubungi layanan pelanggan.']);
+    }
+
+    public function test_existing_token_rejected_with_403_when_customer_becomes_inactive(): void
+    {
+        $customer = Customer::factory()->create([
+            'password'       => Hash::make('Rahasia123!',),
+            'activated_at'   => now(),
+            'service_status' => 'ACTIVE',
+        ]);
+
+        $token = $customer->createToken('Device1', ['customer'])->plainTextToken;
+
+        // Active customer can access /api/v1/me
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/v1/me')
+            ->assertStatus(200);
+
+        // Admin changes status to INACTIVE
+        $customer->update(['service_status' => 'INACTIVE']);
+
+        // Forget auth guards so container resolves user freshly from DB
+        $this->app['auth']->forgetGuards();
+
+        // Next request with existing token MUST be rejected 403
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/v1/me')
+            ->assertStatus(403)
             ->assertJson(['message' => 'Akun Anda tidak aktif. Hubungi layanan pelanggan.']);
     }
 
@@ -219,11 +293,50 @@ class CustomerApiTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['token', 'profile']);
+            ->assertJsonStructure(['data' => ['token', 'profile']]);
+    }
+
+    public function test_login_allows_multi_device_up_to_five_active_tokens(): void
+    {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+        $customer = Customer::factory()->create([
+            'customer_code' => 'MULTI-DEV',
+            'password'      => Hash::make('Rahasia123!'),
+            'activated_at'  => now(),
+        ]);
+
+        // Login 5 times on different devices
+        for ($i = 1; $i <= 5; $i++) {
+            $this->postJson('/api/v1/auth/login', [
+                'customer_code' => 'MULTI-DEV',
+                'password'      => 'Rahasia123!',
+                'device_name'   => 'Device ' . $i,
+            ])->assertStatus(200);
+        }
+
+        $customer->refresh();
+        $this->assertCount(5, $customer->tokens);
+        $oldestTokenId = $customer->tokens()->orderBy('created_at')->first()->id;
+
+        // Clear rate limiter so 6th login can proceed
+        RateLimiter::clear('api_auth:code:MULTI-DEV');
+        RateLimiter::clear('api_auth:ip:127.0.0.1');
+
+        // 6th login: should prune oldest token and keep count at 5
+        $this->postJson('/api/v1/auth/login', [
+            'customer_code' => 'MULTI-DEV',
+            'password'      => 'Rahasia123!',
+            'device_name'   => 'Device 6',
+        ])->assertStatus(200);
+
+        $customer->refresh();
+        $this->assertCount(5, $customer->tokens);
+        $this->assertFalse($customer->tokens()->where('id', $oldestTokenId)->exists());
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Area 3: IDOR Protection
+    // Area 3: IDOR Protection & Invoice Items
     // ─────────────────────────────────────────────────────────────
 
     public function test_customer_cannot_view_another_customers_invoice(): void
@@ -242,7 +355,7 @@ class CustomerApiTest extends TestCase
             ->assertJson(['message' => 'Data tidak ditemukan.']);
     }
 
-    public function test_customer_invoice_list_only_contains_own_invoices(): void
+    public function test_customer_invoice_list_only_contains_own_invoices_and_includes_customer_fields(): void
     {
         $customerA = Customer::factory()->create(['password' => Hash::make('Pwd123!'), 'activated_at' => now()]);
         $customerB = Customer::factory()->create(['password' => Hash::make('Pwd123!'), 'activated_at' => now()]);
@@ -261,6 +374,13 @@ class CustomerApiTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertCount(2, $response->json('data'));
+
+        // Verify customer denormalized fields are present without N+1
+        $firstItem = $response->json('data.0');
+        $this->assertEquals($customerA->customer_code, $firstItem['customer_code']);
+        $this->assertEquals($customerA->name, $firstItem['customer_name']);
+        $this->assertEquals($customerA->address, $firstItem['address']);
+        $this->assertEquals($customerA->package, $firstItem['package']);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -353,7 +473,8 @@ class CustomerApiTest extends TestCase
 
     public function test_auth_rate_limiting(): void
     {
-        RateLimiter::clear('api_auth:127.0.0.1|TEST-RATE');
+        RateLimiter::clear('api_auth:code:TEST-RATE');
+        RateLimiter::clear('api_auth:ip:127.0.0.1');
 
         $customer = Customer::factory()->create([
             'customer_code' => 'TEST-RATE',
@@ -377,5 +498,34 @@ class CustomerApiTest extends TestCase
 
         $response->assertStatus(429)
             ->assertJson(['message' => 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.']);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Area 8: Home & Support Envelope
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_home_and_support_contacts_envelopes(): void
+    {
+        $customer = Customer::factory()->create(['password' => Hash::make('Pwd123!'), 'activated_at' => now()]);
+        $token = $customer->createToken('DeviceA', ['customer'])->plainTextToken;
+
+        // GET /home envelope
+        $homeRes = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/v1/home');
+
+        $homeRes->assertStatus(200)
+            ->assertJsonStructure(['data' => ['unpaid_count', 'total_unpaid_amount', 'latest_unpaid', 'announcements']]);
+
+        // GET /support-contacts envelope & labels
+        $supRes = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/v1/support-contacts');
+
+        $supRes->assertStatus(200)
+            ->assertJsonStructure(['data' => [['category', 'label', 'phone']]]);
+
+        $labels = collect($supRes->json('data'))->pluck('label')->all();
+        $this->assertContains('Masalah Koneksi', $labels);
+        $this->assertContains('Masalah Pembayaran', $labels);
+        $this->assertContains('Bantuan Pemasangan/Pemasaran', $labels);
     }
 }

@@ -25,6 +25,7 @@ class HomeController extends Controller
         // Latest UNPAID invoices (max 5)
         $latestUnpaid = Invoice::where('customer_id', $customer->id)
             ->where('status', 'UNPAID')
+            ->with('customer:id,customer_code,name,address,package')
             ->orderByDesc('period')
             ->limit(5)
             ->get();
@@ -36,16 +37,18 @@ class HomeController extends Controller
             ->get(['id', 'title', 'body', 'published_at', 'expires_at']);
 
         return response()->json([
-            'unpaid_count'        => (int) $stats->unpaid_count,
-            'total_unpaid_amount' => (int) $stats->total_unpaid_amount,
-            'latest_unpaid'       => InvoiceResource::collection($latestUnpaid),
-            'announcements'       => $announcements->map(fn ($a) => [
-                'id'           => $a->id,
-                'title'        => $a->title,
-                'body'         => $a->body,
-                'published_at' => $a->published_at?->toIso8601String(),
-                'expires_at'   => $a->expires_at?->toIso8601String(),
-            ]),
+            'data' => [
+                'unpaid_count'        => (int) $stats->unpaid_count,
+                'total_unpaid_amount' => (int) $stats->total_unpaid_amount,
+                'latest_unpaid'       => InvoiceResource::collection($latestUnpaid),
+                'announcements'       => $announcements->map(fn ($a) => [
+                    'id'           => $a->id,
+                    'title'        => $a->title,
+                    'body'         => $a->body,
+                    'published_at' => $a->published_at?->toIso8601String(),
+                    'expires_at'   => $a->expires_at?->toIso8601String(),
+                ]),
+            ],
         ]);
     }
 }

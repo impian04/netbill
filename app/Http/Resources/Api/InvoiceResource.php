@@ -16,12 +16,13 @@ class InvoiceResource extends JsonResource
             'due_date'        => $this->due_date?->toDateString(),
             'amount'          => (int) $this->deferred_amount,
             'status'          => $this->status,
-            'paid_at'         => $this->paid_at?->toIso8601String(),
-            // Customer denormalized for invoice detail display
-            'customer_code'   => $this->whenLoaded('customer', fn () => $this->customer->customer_code),
-            'customer_name'   => $this->whenLoaded('customer', fn () => $this->customer->name),
-            'address'         => $this->whenLoaded('customer', fn () => $this->customer->address),
-            'package'         => $this->whenLoaded('customer', fn () => $this->customer->package),
+            'paid_at'           => $this->paid_at?->toIso8601String(),
+            'payment_reference' => $this->payment_reference,
+            // Customer denormalized info
+            'customer_code'     => $this->relationLoaded('customer') ? $this->customer?->customer_code : null,
+            'customer_name'     => $this->relationLoaded('customer') ? $this->customer?->name : null,
+            'address'           => $this->relationLoaded('customer') ? $this->customer?->address : null,
+            'package'           => $this->relationLoaded('customer') ? $this->customer?->package : null,
         ];
     }
 }

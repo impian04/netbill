@@ -106,6 +106,18 @@ class RowValidator
             $errors[] = 'Status tidak valid: "' . ($row['status'] ?? '') . '" (gunakan PAID atau UNPAID)';
         }
 
+        // Jatuh Tempo (optional)
+        $dueDateRaw = trim((string) ($row['jatuh_tempo'] ?? $row['due_date'] ?? ''));
+        if ($dueDateRaw !== '') {
+            try {
+                if (! self::parseFlexibleDate($dueDateRaw)) {
+                    $errors[] = 'Jatuh Tempo tidak valid: "' . $dueDateRaw . '"';
+                }
+            } catch (\Exception) {
+                $errors[] = 'Jatuh Tempo tidak valid: "' . $dueDateRaw . '"';
+            }
+        }
+
         return $errors;
     }
 

@@ -25,7 +25,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Protected (Sanctum token, ability: customer) ─────────────────
-    Route::middleware(['auth:sanctum', 'ability:customer', 'throttle:api_customer'])->group(function () {
+    Route::middleware(['auth:sanctum', 'ability:customer', 'customer.active', 'throttle:api_customer'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.auth.logout');
 
         Route::get('/me',            [ProfileController::class, 'show'])->name('api.me');

@@ -26,7 +26,7 @@ class UpdateCustomerRequest extends FormRequest
                 'regex:/^[A-Z0-9\-]+$/',
             ],
             'name'           => ['required', 'string', 'max:100'],
-            'phone'          => ['nullable', 'string', 'regex:/^62[0-9]{7,14}$/'],
+            'phone'          => ['nullable', 'string', 'regex:/^62[0-9]{8,13}$/'],
             'address'        => ['required', 'string', 'max:500'],
             'subscribed_at'  => ['required', 'date', 'before_or_equal:today'],
             'package'        => ['required', 'string', 'max:50'],

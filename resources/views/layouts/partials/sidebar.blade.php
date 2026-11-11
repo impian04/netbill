@@ -54,13 +54,34 @@
     </ul>
 
     <div class="mt-auto p-3" style="border-top:1px solid rgba(255,255,255,.06);">
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('logout') }}" id="sidebar-logout-form">
             @csrf
-            <button type="submit" class="btn btn-sm w-100 d-flex align-items-center gap-2"
+            <button type="button" class="btn btn-sm w-100 d-flex align-items-center gap-2"
+                    id="btn-sidebar-logout"
                     style="background:rgba(239,68,68,.15);color:#fca5a5;border:none;">
                 <i class="bi bi-box-arrow-left"></i>
                 Keluar
             </button>
         </form>
     </div>
+
+    <script>
+        document.getElementById('btn-sidebar-logout')?.addEventListener('click', async function () {
+            if (typeof window.confirmAction === 'function') {
+                const result = await window.confirmAction({
+                    title: 'Keluar dari Sistem?',
+                    text: 'Anda akan mengakhiri sesi administrasi ini.',
+                    confirmButtonText: 'Ya, Keluar',
+                    cancelButtonText: 'Batal',
+                    confirmButtonClass: 'btn btn-danger',
+                    icon: 'question'
+                });
+                if (result.isConfirmed) {
+                    document.getElementById('sidebar-logout-form').submit();
+                }
+            } else {
+                document.getElementById('sidebar-logout-form').submit();
+            }
+        });
+    </script>
 </nav>

@@ -11,7 +11,11 @@ class CustomerFilter
 
     public static function apply(Builder $query, array $filters): Builder
     {
-        self::search($query, $filters['search'] ?? null);
+        $search = $filters['search'] ?? null;
+        if (is_array($search)) {
+            $search = $search['value'] ?? null;
+        }
+        self::search($query, is_string($search) && trim($search) !== '' ? trim($search) : null);
         self::filterPackage($query, $filters['package'] ?? null);
         self::filterBillingType($query, $filters['billing_type'] ?? null);
         self::filterServiceStatus($query, $filters['service_status'] ?? null);

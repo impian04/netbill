@@ -27,7 +27,7 @@ class StoreCustomerRequest extends FormRequest
         return [
             'customer_code'  => ['required', 'string', 'max:20', 'unique:customers,customer_code', 'regex:/^[A-Z0-9\-]+$/'],
             'name'           => ['required', 'string', 'max:100'],
-            'phone'          => ['required', 'string', 'regex:/^62[0-9]{7,14}$/'],
+            'phone'          => ['required', 'string', 'regex:/^62[0-9]{8,13}$/'],
             'address'        => ['required', 'string', 'max:500'],
             'subscribed_at'  => ['required', 'date', 'before_or_equal:today'],
             'package'        => ['required', 'string', 'max:50'],
@@ -45,7 +45,7 @@ class StoreCustomerRequest extends FormRequest
             'customer_code.max'             => 'Kode pelanggan maksimal 20 karakter.',
             'name.required'                 => 'Nama pelanggan wajib diisi.',
             'phone.required'                => 'Nomor telepon wajib diisi.',
-            'phone.regex'                   => 'Format nomor: 62xxxxxxxxxx (diawali 62).',
+            'phone.regex'                   => 'Format nomor: 62xxxxxxxxxx (diawali 62, panjang 10-15 digit).',
             'address.required'              => 'Alamat wajib diisi.',
             'subscribed_at.required'        => 'Tanggal mulai berlangganan wajib diisi.',
             'subscribed_at.before_or_equal' => 'Tanggal tidak boleh melewati hari ini.',
@@ -58,13 +58,30 @@ class StoreCustomerRequest extends FormRequest
 
     public static function normalizePhone(string $phone): string
     {
-        $digits = preg_replace('/\D/', '', $phone);
+        $p = trim($phone);
+        // Buang petik tunggal di awal
+        $p = ltrim($p, "'");
+        // Buang spasi, -, (, )
+        $p = str_replace([' ', '-', '(', ')'], '', $p);
+
+        // Jika diawali +62 atau +
+        if (str_starts_with($p, '+62')) {
+            $p = substr($p, 1);
+        } elseif (str_starts_with($p, '+')) {
+            $p = substr($p, 1);
+        }
+
+        // Ambil hanya digit
+        $digits = preg_replace('/\D/', '', $p);
+
         // Convert 08xx → 628xx
         if (str_starts_with($digits, '08')) {
             $digits = '62' . substr($digits, 1);
         } elseif (str_starts_with($digits, '8')) {
+            // Jika diawali 8 (angka tanpa 0 di depan karena cell bertipe angka) anggap 08xx
             $digits = '62' . $digits;
         }
+
         return $digits;
     }
 

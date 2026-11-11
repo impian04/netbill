@@ -4,15 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'NetBill') — NetBill Admin</title>
+    <title>@yield('title', 'Dashboard') — NetBill Admin</title>
     <meta name="description" content="NetBill — Sistem manajemen tagihan pelanggan internet.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
+
+    {{-- Flash data container untuk otomatis ditangkap oleh SweetAlert2 Toast --}}
+    @php
+        $flashType = session('success') ? 'success' : (session('error') ? 'error' : (session('warning') ? 'warning' : ''));
+        $flashMsg = session('success') ?? session('error') ?? session('warning') ?? '';
+        $activationCode = session('activation_code_display') ?? '';
+        $customerName = session('activation_customer_name') ?? '';
+    @endphp
+    <div id="flash-data" class="d-none"
+         data-type="{{ $flashType }}"
+         data-message="{{ $flashMsg }}"
+         data-activation-code="{{ $activationCode }}"
+         data-customer-name="{{ $customerName }}"></div>
 
     {{-- Sidebar --}}
     @include('layouts.partials.sidebar')
@@ -22,11 +34,9 @@
 
     {{-- Main content --}}
     <main id="main-content">
-        <div class="flash-area mb-3">
-            @include('layouts.partials.flash')
+        <div class="container-fluid p-0">
+            @yield('content')
         </div>
-
-        @yield('content')
     </main>
 
     {{-- Sidebar overlay (mobile) --}}

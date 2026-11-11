@@ -54,7 +54,7 @@ class DatabaseSeeder extends Seeder
             foreach ($months as $month) {
                 $rows[] = [
                     'customer_id'     => $customer->id,
-                    'invoice_number'  => 'TMP-' . $customer->id . '-' . $month->format('Ym'),
+                    'invoice_number'  => 'DRAFT-' . uniqid() . '-' . bin2hex(random_bytes(4)),
                     'period'          => $month->format('Y-m-d'),
                     'deferred_amount' => fake()->randomElement([110000, 165000, 220000, 275000, 330000]),
                     'status'          => fake()->randomElement(['PAID', 'UNPAID']),
@@ -66,17 +66,10 @@ class DatabaseSeeder extends Seeder
 
         DB::table('invoices')->insert($rows);
 
-        // Backfill invoice_number for seeder rows (model boot only triggers on Eloquent create)
-        DB::statement("
-            UPDATE invoices
-            SET invoice_number = CONCAT('INV-', DATE_FORMAT(period, '%Y%m'), '-', LPAD(id, 6, '0'))
-            WHERE invoice_number IS NULL OR invoice_number LIKE 'TMP-%'
-        ");
+        // Format nomor invoice resmi secara portabel (MySQL, SQLite, dll.)
+        Invoice::fixDraftNumbers();
 
         // Backfill paid_at for PAID invoices
-        DB::statement("
-            UPDATE invoices SET paid_at = created_at
-            WHERE status = 'PAID' AND paid_at IS NULL
-        ");
+        Invoice::where('status', 'PAID')->whereNull('paid_at')->update(['paid_at' => now()]);
     }
 }

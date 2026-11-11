@@ -44,11 +44,15 @@ class RowValidator
         }
 
         // Nomor Telepon (optional — empty allowed)
-        $phone = trim($row['nomor_telepon'] ?? '');
+        $phone = trim((string) ($row['nomor_telepon'] ?? ''));
         if ($phone !== '') {
-            $normalized = StoreCustomerRequest::normalizePhone($phone);
-            if (! preg_match('/^62[0-9]{7,14}$/', $normalized)) {
-                $errors[] = 'Nomor Telepon tidak valid: "' . $phone . '" (format: 62xxxxxxxxxx)';
+            if (preg_match('/^[0-9]+(\.[0-9]+)?[eE][\+\-]?[0-9]+$/i', $phone)) {
+                $errors[] = 'Nomor telepon rusak oleh Excel. Gunakan template .xlsx atau format kolom sebagai Teks.';
+            } else {
+                $normalized = StoreCustomerRequest::normalizePhone($phone);
+                if (! preg_match('/^62[0-9]{8,13}$/', $normalized)) {
+                    $errors[] = 'Nomor Telepon tidak valid: "' . $phone . '" (format: 62xxxxxxxxxx)';
+                }
             }
         }
 
@@ -148,8 +152,22 @@ class RowValidator
         if ($str === '') {
             return null;
         }
-        if (is_numeric($str) && (float) $str > 40000) {
-            return Carbon::createFromTimestamp(((float) $str - 25569) * 86400)->format('Y-m-d');
+        if (is_numeric($str) && (float) $str > 20000 && (float) $str < 100000) {
+            try {
+                return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $str))->format('Y-m-d');
+            } catch (\Throwable) {
+                return Carbon::createFromTimestamp(((float) $str - 25569) * 86400)->format('Y-m-d');
+            }
+        }
+        if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $str, $m)) {
+            try {
+                return Carbon::createFromDate((int) $m[3], (int) $m[2], (int) $m[1])->format('Y-m-d');
+            } catch (\Throwable) {}
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $str)) {
+            try {
+                return Carbon::createFromFormat('Y-m-d', $str)->format('Y-m-d');
+            } catch (\Throwable) {}
         }
         try {
             return Carbon::parse($str)->format('Y-m-d');

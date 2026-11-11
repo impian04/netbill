@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ImportTemplateExport;
 use App\Imports\RowValidator;
 use App\Jobs\ProcessImport;
 use App\Models\ImportBatch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -32,21 +34,32 @@ class ImportController extends Controller
         return view('imports.index', compact('batches'));
     }
 
-    /** Download CSV template */
-    public function template(): StreamedResponse
+    /** Download Excel (.xlsx) template (primary) */
+    public function templateXlsx(): StreamedResponse
     {
-        $headers = [
-            'ID Pelanggan', 'Nama', 'Nomor Telepon', 'Alamat',
-            'Tanggal Mulai Berlangganan', 'Jenis Tagihan', 'Paket', 'Status Layanan',
-            'Periode', 'Nominal Ditangguhkan', 'Status', 'Jatuh Tempo',
-        ];
+        $spreadsheet = ImportTemplateExport::build();
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 'template-import-netbill.xlsx', [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="template-import-netbill.xlsx"',
+            'Cache-Control'       => 'max-age=0',
+        ]);
+    }
+
+    /** Download CSV template (secondary) */
+    public function templateCsv(): StreamedResponse
+    {
+        $headers = ImportTemplateExport::HEADERS;
         $example = [
-            'SLX-GS-00001', 'Budi Santoso', '628123456789',
+            'SLX-GS-00001', 'Budi Santoso', '08123456789',
             'Jl. Merdeka No. 10, Kel. Sukamaju',
             '2023-01-15', 'Bulanan', '10 Mbps', 'ACTIVE', '2026-10', '220000', 'UNPAID', '2026-10-20',
         ];
         $example2 = [
-            'SLX-GS-00002', 'Siti Rahayu', '628987654321',
+            'SLX-GS-00002', 'Siti Rahayu', '08987654321',
             'Jl. Pahlawan No. 5, RT 02/03',
             '2022-06-01', 'Bulanan', '20 Mbps', 'ACTIVE', '2026-10', '330000', 'PAID', '',
         ];
@@ -65,25 +78,43 @@ class ImportController extends Controller
         ]);
     }
 
-    /** Handle file upload → show preview */
-    public function upload(Request $request): RedirectResponse|View
+    /** Default template method (Excel .xlsx) */
+    public function template(): StreamedResponse
     {
-        $request->validate(
-            ['file' => ['required', 'file', 'max:' . (self::MAX_MB * 1024)]],
-            ['file.required' => 'File wajib diunggah.', 'file.max' => 'Ukuran file maksimal ' . self::MAX_MB . 'MB.']
-        );
+        return $this->templateXlsx();
+    }
+
+    /** Handle file upload → store temporary session → redirect to preview (PRG) */
+    public function upload(Request $request): RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => ['required', 'file', 'max:' . (self::MAX_MB * 1024)],
+        ], [
+            'file.required' => 'File wajib diunggah.',
+            'file.max'      => 'Ukuran file maksimal ' . self::MAX_MB . 'MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->route('imports.index')
+                ->withErrors($validator)
+                ->with('error', $validator->errors()->first());
+        }
 
         $file = $request->file('file');
         $ext  = strtolower($file->getClientOriginalExtension());
 
         if (! in_array($ext, self::ALLOWED_EXTS, true)) {
-            return back()->withErrors(['file' => 'Format tidak didukung. Gunakan .xlsx atau .csv.']);
+            return redirect()->route('imports.index')
+                ->withErrors(['file' => 'Format tidak didukung. Gunakan .xlsx atau .csv.'])
+                ->with('error', 'Format tidak didukung. Gunakan .xlsx atau .csv.');
         }
 
         // Validate real MIME (not just extension)
         $mime = $file->getMimeType();
         if (! in_array($mime, self::ALLOWED_MIMES, true)) {
-            return back()->withErrors(['file' => "Tipe file tidak valid (MIME: {$mime})."]);;
+            return redirect()->route('imports.index')
+                ->withErrors(['file' => "Tipe file tidak valid (MIME: {$mime})."])
+                ->with('error', "Tipe file tidak valid (MIME: {$mime}).");
         }
 
         // Store in private disk
@@ -98,7 +129,9 @@ class ImportController extends Controller
             $preview = $this->readPreview(Storage::path($path), $ext);
         } catch (\Throwable $e) {
             Storage::delete($path);
-            return back()->withErrors(['file' => 'File tidak dapat dibaca: ' . $e->getMessage()]);
+            return redirect()->route('imports.index')
+                ->withErrors(['file' => 'File tidak dapat dibaca: ' . $e->getMessage()])
+                ->with('error', 'File tidak dapat dibaca: ' . $e->getMessage());
         }
 
         // Validate required headers exist
@@ -109,37 +142,78 @@ class ImportController extends Controller
         if ($missing) {
             Storage::delete($path);
             $labels = array_map(fn ($k) => RowValidator::REQUIRED_HEADERS[$k], $missing);
-            return back()->withErrors(['file' => 'Kolom tidak lengkap: ' . implode(', ', $labels)]);
+            return redirect()->route('imports.index')
+                ->withErrors(['file' => 'Kolom tidak lengkap: ' . implode(', ', $labels)])
+                ->with('error', 'Kolom tidak lengkap: ' . implode(', ', $labels));
+        }
+
+        $token = str()->random(40);
+        session()->put("import_preview_{$token}", [
+            'user_id'       => auth()->id(),
+            'file_path'     => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'preview'       => $preview,
+            'ext'           => $ext,
+        ]);
+
+        return redirect()->route('imports.preview', ['token' => $token]);
+    }
+
+    /** Display preview using session data */
+    public function preview(Request $request, string $token): View|RedirectResponse
+    {
+        $sessionKey = "import_preview_{$token}";
+        $data       = session()->get($sessionKey);
+
+        if (! $data || ($data['user_id'] ?? null) !== auth()->id() || ! Storage::disk('local')->exists($data['file_path'] ?? '')) {
+            return redirect()->route('imports.index')
+                ->withErrors(['file' => 'Data pratinjau tidak ditemukan atau sudah kedaluwarsa. Silakan unggah ulang file.'])
+                ->with('error', 'Data pratinjau tidak ditemukan atau sudah kedaluwarsa.');
         }
 
         return view('imports.preview', [
-            'filePath'     => $path,
-            'originalName' => $file->getClientOriginalName(),
-            'preview'      => $preview,
-            'ext'          => $ext,
+            'token'        => $token,
+            'filePath'     => $data['file_path'],
+            'originalName' => $data['original_name'],
+            'preview'      => $data['preview'],
+            'ext'          => $data['ext'],
         ]);
     }
 
     /** Confirm → dispatch job */
     public function confirm(Request $request): RedirectResponse
     {
-        $request->validate([
-            'file_path'        => ['required', 'string', 'max:500'],
-            'original_name'    => ['required', 'string', 'max:255'],
+        $validator = Validator::make($request->all(), [
             'duplicate_policy' => ['required', Rule::in(['skip', 'update'])],
+        ], [
+            'duplicate_policy.required' => 'Pilih kebijakan penanganan duplikat.',
+            'duplicate_policy.in'       => 'Pilihan kebijakan duplikat tidak valid.',
         ]);
 
-        if (! Storage::exists($request->file_path)) {
+        if ($validator->fails()) {
             return redirect()->route('imports.index')
-                ->withErrors(['file' => 'File tidak ditemukan. Silakan unggah ulang.']);
+                ->withErrors($validator)
+                ->with('error', $validator->errors()->first());
+        }
+
+        $token      = (string) $request->input('token');
+        $sessionKey = "import_preview_{$token}";
+        $data       = $token ? session()->get($sessionKey) : null;
+
+        if (! $data || ($data['user_id'] ?? null) !== auth()->id() || ! Storage::disk('local')->exists($data['file_path'] ?? '')) {
+            return redirect()->route('imports.index')
+                ->withErrors(['file' => 'Data pratinjau tidak ditemukan atau sudah kedaluwarsa. Silakan unggah ulang file.'])
+                ->with('error', 'Data pratinjau tidak ditemukan atau sudah kedaluwarsa.');
         }
 
         $batch = ImportBatch::create([
-            'file_path'        => $request->file_path,
-            'original_name'    => $request->original_name,
+            'file_path'        => $data['file_path'],
+            'original_name'    => $data['original_name'],
             'duplicate_policy' => $request->duplicate_policy,
             'status'           => 'queued',
         ]);
+
+        session()->forget($sessionKey);
 
         ProcessImport::dispatch($batch);
 
@@ -170,7 +244,22 @@ class ImportController extends Controller
                 $iter->setIterateOnlyExistingCells(false);
                 $rowData = [];
                 foreach ($iter as $cell) {
-                    $rowData[] = $cell->getFormattedValue();
+                    $value = $cell->getValue();
+                    if ($value instanceof \PhpOffice\PhpSpreadsheet\RichText\RichText) {
+                        $value = $value->getPlainText();
+                    }
+                    if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cell) && is_numeric($value)) {
+                        try {
+                            $value = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
+                        } catch (\Throwable) {
+                            $value = $cell->getFormattedValue();
+                        }
+                    } elseif (is_float($value) || is_int($value)) {
+                        if (floor($value) == $value) {
+                            $value = number_format($value, 0, '', '');
+                        }
+                    }
+                    $rowData[] = $value !== null ? (string) $value : '';
                 }
 
                 if (! array_filter($rowData, fn ($v) => trim((string) $v) !== '')) {

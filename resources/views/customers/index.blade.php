@@ -4,273 +4,260 @@
 
 @section('content')
 
-{{-- Page header --}}
-<div class="d-flex align-items-center justify-content-between mb-4">
+{{-- ── Page Header ─────────────────────────────────────────────── --}}
+<div class="page-header">
     <div>
-        <h1 class="h4 fw-bold mb-0">Daftar Pelanggan</h1>
-        <p class="text-muted small mb-0">Kelola data pelanggan internet</p>
+        <h1 class="page-title">Daftar Pelanggan</h1>
+        <p class="page-subtitle">Kelola data pelanggan internet, paket layanan, dan aktivasi akun</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ route('export.customers', array_filter($filters)) }}"
-           id="btn-export-customers"
-           class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-           title="Export data sesuai filter aktif">
-            <i class="bi bi-download"></i>Export CSV
+        <a href="{{ route('export.customers') }}" class="btn btn-sm btn-success" id="btn-export-customers">
+            <i class="bi bi-download me-1"></i>Ekspor XLSX
         </a>
-        <a href="{{ route('customers.create') }}" id="btn-tambah-pelanggan"
-           class="btn btn-primary d-flex align-items-center gap-2">
-            <i class="bi bi-plus-lg"></i>Tambah Pelanggan
-        </a>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-open-create-customer">
+            <i class="bi bi-plus-lg me-1"></i>Tambah Pelanggan
+        </button>
     </div>
 </div>
 
-{{-- Filter card --}}
-<div class="card mb-3">
-    <div class="card-body">
-        <form id="filter-form" method="GET" action="{{ route('customers.index') }}">
-            <div class="row g-2 align-items-end">
-
-                {{-- Search --}}
-                <div class="col-12 col-lg-4">
-                    <label class="form-label small fw-semibold text-muted mb-1">Cari</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0">
-                            <i class="bi bi-search text-muted small"></i>
-                        </span>
-                        <input type="text" name="search" id="input-search"
-                               class="form-control border-start-0 ps-0"
-                               placeholder="Kode, nama, atau alamat..."
-                               value="{{ $filters['search'] ?? '' }}">
-                    </div>
-                </div>
-
-                {{-- Paket --}}
-                <div class="col-6 col-sm-4 col-lg-2">
-                    <label class="form-label small fw-semibold text-muted mb-1">Paket</label>
-                    <select name="package" id="select-package" class="form-select form-select-sm">
-                        <option value="">Semua Paket</option>
-                        @foreach ($packages as $pkg)
-                            <option value="{{ $pkg }}" @selected(($filters['package'] ?? '') === $pkg)>{{ $pkg }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Jenis Tagihan --}}
-                <div class="col-6 col-sm-4 col-lg-2">
-                    <label class="form-label small fw-semibold text-muted mb-1">Jenis Tagihan</label>
-                    <select name="billing_type" id="select-billing-type" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        @foreach ($billingTypes as $bt)
-                            <option value="{{ $bt }}" @selected(($filters['billing_type'] ?? '') === $bt)>{{ $bt }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Status Tagihan --}}
-                <div class="col-6 col-sm-4 col-lg-1" style="min-width:120px;">
-                    <label class="form-label small fw-semibold text-muted mb-1">Tagihan</label>
-                    <select name="status" id="select-status" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        <option value="PAID" @selected(($filters['status'] ?? '') === 'PAID')>Lunas</option>
-                        <option value="UNPAID" @selected(($filters['status'] ?? '') === 'UNPAID')>Belum Bayar</option>
-                    </select>
-                </div>
-
-                {{-- Status Layanan --}}
-                <div class="col-6 col-sm-4 col-lg-2">
-                    <label class="form-label small fw-semibold text-muted mb-1">Status Layanan</label>
-                    <select name="service_status" id="select-service-status" class="form-select form-select-sm">
-                        <option value="">Semua Status</option>
-                        <option value="ACTIVE" @selected(($filters['service_status'] ?? '') === 'ACTIVE')>ACTIVE</option>
-                        <option value="PENDING" @selected(($filters['service_status'] ?? '') === 'PENDING')>PENDING</option>
-                        <option value="SUSPENDED" @selected(($filters['service_status'] ?? '') === 'SUSPENDED')>SUSPENDED</option>
-                        <option value="INACTIVE" @selected(($filters['service_status'] ?? '') === 'INACTIVE')>INACTIVE</option>
-                    </select>
-                </div>
-
-                {{-- Tahun --}}
-                <div class="col-6 col-sm-4 col-lg-1" style="min-width:105px;">
-                    <label class="form-label small fw-semibold text-muted mb-1">Tahun</label>
-                    <select name="year" id="select-year" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        @foreach ($years as $y)
-                            <option value="{{ $y }}" @selected(($filters['year'] ?? '') == $y)>{{ $y }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Periode --}}
-                <div class="col-6 col-sm-4 col-lg-2">
-                    <label class="form-label small fw-semibold text-muted mb-1">Periode</label>
-                    <input type="month" name="period" id="input-period" class="form-control form-control-sm"
-                           value="{{ $filters['period'] ?? '' }}">
-                </div>
-
-                {{-- Buttons --}}
-                <div class="col-12 d-flex gap-2 pt-1">
-                    <button type="submit" id="btn-filter" class="btn btn-primary btn-sm px-3">
-                        <i class="bi bi-funnel me-1"></i>Filter
-                    </button>
-                    <a href="{{ route('customers.index') }}" id="btn-reset-filter"
-                       class="btn btn-outline-secondary btn-sm px-3">
-                        <i class="bi bi-x-circle me-1"></i>Reset
-                    </a>
+{{-- ── Kartu Filter (row g-2) ──────────────────────────────────── --}}
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form id="filter-customers-form" class="row g-2 align-items-center">
+            <div class="col-12 col-lg-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                    <input type="search" id="filter-search" name="search" class="form-control form-control-sm"
+                           placeholder="Cari kode, nama, atau alamat (otomatis)...">
                 </div>
             </div>
 
-            {{-- Preserve sort/direction on filter submit --}}
-            @if (!empty($filters['sort']))
-                <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
-            @endif
-            @if (!empty($filters['direction']))
-                <input type="hidden" name="direction" value="{{ $filters['direction'] }}">
-            @endif
+            <div class="col-6 col-lg-2">
+                <select name="service_status" id="filter-service-status" class="form-select form-select-sm">
+                    <option value="">Semua Status Layanan</option>
+                    @foreach (\App\Models\Customer::SERVICE_STATUSES as $ss)
+                        <option value="{{ $ss }}">{{ $ss }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <select name="package" id="filter-package" class="form-select form-select-sm">
+                    <option value="">Semua Paket</option>
+                    @foreach ($packages as $pkg)
+                        <option value="{{ $pkg }}">{{ $pkg }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <select name="billing_type" id="filter-billing-type" class="form-select form-select-sm">
+                    <option value="">Semua Jenis Tagihan</option>
+                    @foreach ($billingTypes as $bt)
+                        <option value="{{ $bt }}">{{ $bt }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-6 col-lg-2 text-end">
+                <button type="button" id="btn-reset-filter" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
+                </button>
+            </div>
         </form>
     </div>
 </div>
 
-{{-- Results info --}}
-<div class="mb-2 px-1">
-    <span class="text-muted small">
-        @if ($customers->total() > 0)
-            Menampilkan <strong>{{ $customers->firstItem() }}–{{ $customers->lastItem() }}</strong>
-            dari <strong>{{ number_format($customers->total()) }}</strong> pelanggan
-        @else
-            <span class="text-muted">Tidak ada pelanggan yang cocok.</span>
-        @endif
-    </span>
-</div>
-
-{{-- Table card --}}
-<div class="card" id="customers-table-card">
-    <div class="card-body p-0">
-
-        @if ($customers->isEmpty())
-            {{-- Empty state --}}
-            <div class="text-center py-5 text-muted" id="empty-state">
-                <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
-                <p class="fw-semibold mb-1">Tidak ada pelanggan ditemukan</p>
-                <p class="small mb-3">Coba ubah filter atau tambah pelanggan baru.</p>
-                @if (array_filter(array_diff_key($filters, ['sort' => 1, 'direction' => 1])))
-                    <a href="{{ route('customers.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-x-circle me-1"></i>Reset Filter
-                    </a>
-                @endif
-            </div>
-
-        @else
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="customers-table">
-                    <thead>
-                        <tr>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'customer_code', 'label' => 'Kode', 'filters' => $filters, 'routeName' => 'customers.index'])</th>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'name', 'label' => 'Nama / Telepon', 'filters' => $filters, 'routeName' => 'customers.index'])</th>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'package', 'label' => 'Paket', 'filters' => $filters, 'routeName' => 'customers.index'])</th>
-                            <th class="text-center">Status Layanan</th>
-                            <th>Jenis Tagihan</th>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'subscribed_at', 'label' => 'Mulai Langganan', 'filters' => $filters, 'routeName' => 'customers.index'])</th>
-                            <th class="text-center">Invoice</th>
-                            <th class="text-center">Belum Bayar</th>
-                            <th class="text-end">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($customers as $customer)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('customers.show', $customer) }}"
-                                       class="fw-semibold text-primary text-decoration-none font-monospace small">
-                                        {{ $customer->customer_code }}
-                                    </a>
-                                </td>
-                                <td>
-                                    <div class="fw-medium">{{ $customer->name }}</div>
-                                    @if ($customer->phone)
-                                        <div class="text-muted font-monospace small" style="font-size: .75rem;">
-                                            <i class="bi bi-telephone me-1"></i>{{ $customer->phone }}
-                                        </div>
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark border fw-normal">
-                                        {{ $customer->package }}
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-{{ $customer->serviceStatusColor() }}">
-                                        {{ $customer->service_status }}
-                                    </span>
-                                </td>
-                                <td class="text-muted small">{{ $customer->billing_type }}</td>
-                                <td class="text-muted small">{{ tgl_indo($customer->subscribed_at) }}</td>
-                                <td class="text-center">
-                                    <span class="badge bg-secondary rounded-pill">{{ $customer->invoices_count }}</span>
-                                </td>
-                                <td class="text-center">
-                                    @if ($customer->unpaid_count > 0)
-                                        <span class="badge badge-unpaid rounded-pill fw-semibold">
-                                            {{ $customer->unpaid_count }}
-                                        </span>
-                                    @else
-                                        <span class="text-muted small">—</span>
-                                    @endif
-                                </td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <a href="{{ route('customers.show', $customer) }}"
-                                           class="btn btn-sm btn-outline-primary" title="Detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a href="{{ route('customers.edit', $customer) }}"
-                                           class="btn btn-sm btn-outline-secondary" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-danger btn-delete"
-                                                data-name="{{ $customer->name }}"
-                                                data-action="{{ route('customers.destroy', $customer) }}"
-                                                title="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- Pagination --}}
-            @if ($customers->hasPages())
-                <div class="d-flex justify-content-center py-3 border-top">
-                    {{ $customers->links('pagination::bootstrap-5') }}
-                </div>
-            @endif
-        @endif
+{{-- ── Kartu Tabel DataTables Server-Side ───────────────────────── --}}
+<div class="card">
+    <div class="card-body p-3">
+        <table id="customers-table" class="table table-hover align-middle mb-0 w-100">
+            <thead>
+                <tr>
+                    <th>ID Pelanggan</th>
+                    <th>Nama</th>
+                    <th class="d-none d-lg-table-cell">Telepon</th>
+                    <th>Paket</th>
+                    <th class="d-none d-lg-table-cell">Tagihan</th>
+                    <th>Status Layanan</th>
+                    <th class="d-none d-lg-table-cell">Terdaftar</th>
+                    <th class="text-end" style="width: 100px;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 </div>
 
-{{-- Delete modal --}}
-@include('layouts.partials.confirm-delete-modal')
+{{-- ── Offcanvas Form (Tambah & Ubah) ───────────────────────────── --}}
+@include('customers.partials.offcanvas', [
+    'packages'     => $packages,
+    'billingTypes' => $billingTypes,
+])
 
 @endsection
 
 @push('scripts')
 <script>
-// Wire up delete modal
-document.querySelectorAll('.btn-delete').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        document.getElementById('delete-modal-name').textContent = this.dataset.name;
-        document.getElementById('delete-form').action = this.dataset.action;
-        new bootstrap.Modal(document.getElementById('deleteModal')).show();
-    });
-});
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Inisialisasi DataTable Server-Side
+    const table = window.initServerTable('#customers-table', {
+        ajaxUrl: '{{ route('customers.index') }}',
+        filterForm: '#filter-customers-form',
+        searchInput: '#filter-search',
+        resetButton: '#btn-reset-filter',
+        pageLength: 15,
+        order: [[0, 'asc']], // default customer_code asc
+        columns: [
+            {
+                data: 'customer_code',
+                name: 'customer_code',
+                render: function (data, type, row) {
+                    return `<span class="font-monospace fw-semibold text-primary">${window.escapeHtml(data)}</span>`;
+                }
+            },
+            {
+                data: 'name',
+                name: 'name',
+                render: function (data, type, row) {
+                    return `
+                        <div>
+                            <a href="${row.urls.show}" class="fw-semibold text-dark text-decoration-none hover-primary">
+                                ${window.escapeHtml(data)}
+                            </a>
+                            <div class="small text-muted d-lg-none">${window.escapeHtml(row.phone || '—')}</div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                data: 'phone',
+                name: 'phone',
+                className: 'd-none d-lg-table-cell small text-muted',
+                render: function (data) {
+                    return data ? window.escapeHtml(data) : '<span class="text-muted">—</span>';
+                }
+            },
+            {
+                data: 'package',
+                name: 'package',
+                render: function (data) {
+                    return `<span class="badge bg-light text-dark border fw-normal">${window.escapeHtml(data)}</span>`;
+                }
+            },
+            {
+                data: 'billing_type',
+                name: 'billing_type',
+                className: 'd-none d-lg-table-cell small',
+                render: function (data, type, row) {
+                    let unpaidBadge = '';
+                    if (row.unpaid_count > 0) {
+                        unpaidBadge = `<span class="badge badge-unpaid ms-1" title="${row.unpaid_count} tagihan belum bayar">${row.unpaid_count} unpaid</span>`;
+                    }
+                    return `${window.escapeHtml(data)} ${unpaidBadge}`;
+                }
+            },
+            {
+                data: 'service_status',
+                name: 'service_status',
+                render: function (data) {
+                    let color = 'secondary';
+                    if (data === 'ACTIVE') color = 'success';
+                    else if (data === 'SUSPENDED') color = 'warning';
+                    else if (data === 'INACTIVE') color = 'danger';
+                    else if (data === 'PENDING') color = 'info';
 
-// Show spinner on filter submit
-document.getElementById('filter-form').addEventListener('submit', function () {
-    var btn = document.getElementById('btn-filter');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Memfilter...';
-    btn.disabled = true;
+                    return `<span class="badge bg-${color}">${window.escapeHtml(data)}</span>`;
+                }
+            },
+            {
+                data: 'subscribed_at',
+                name: 'subscribed_at',
+                className: 'd-none d-lg-table-cell small text-muted',
+                render: function (data) {
+                    return window.formatTanggalIndo(data);
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                className: 'text-end text-nowrap',
+                render: function (data, type, row) {
+                    return `
+                        <div class="btn-group btn-group-sm">
+                            <a href="${row.urls.show}" class="btn btn-outline-secondary py-1 px-2" title="Lihat Rincian">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary py-1 px-2 btn-edit-customer"
+                                    data-id="${row.id}" data-url="${row.urls.show}" title="Ubah Data">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger py-1 px-2 btn-delete-customer"
+                                    data-url="${row.urls.delete}" data-name="${window.escapeHtml(row.name)}" title="Hapus Pelanggan">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ]
+    });
+
+    // 2. Inisialisasi CRUD Offcanvas Pelanggan
+    const crudCustomer = window.initCrudOffcanvas({
+        offcanvasSelector: '#offcanvas-customer',
+        storeUrl: '{{ route('customers.store') }}',
+        baseUrl: '{{ url('customers') }}',
+        createTitle: 'Tambah Pelanggan',
+        editTitle: 'Ubah Data Pelanggan',
+        table: table,
+        onOpenCreate: function (form) {
+            // Saran ID otomatis
+            fetchNextCode('SLX-GS');
+        }
+    });
+
+    // Tombol Buka Tambah Pelanggan
+    document.getElementById('btn-open-create-customer')?.addEventListener('click', function () {
+        crudCustomer.openCreate();
+    });
+
+    // Tombol Ubah Pelanggan (Event Delegation)
+    $('#customers-table').on('click', '.btn-edit-customer', function () {
+        const id = $(this).data('id');
+        const url = $(this).data('url');
+        crudCustomer.openEdit(id, url);
+    });
+
+    // Tombol Hapus Pelanggan (Event Delegation)
+    $('#customers-table').on('click', '.btn-delete-customer', function () {
+        const url = $(this).data('url');
+        const name = $(this).data('name');
+        crudCustomer.deleteItem(url, `Hapus pelanggan "${name}" beserta seluruh riwayat tagihannya?`);
+    });
+
+    // Helper saran ID otomatis saat ganti prefix
+    const prefixInput = document.getElementById('cust_code_prefix');
+    if (prefixInput) {
+        prefixInput.addEventListener('input', function () {
+            fetchNextCode(this.value);
+        });
+    }
+
+    function fetchNextCode(prefix) {
+        if (!prefix) return;
+        fetch(`{{ route('customers.suggest-code') }}?prefix=${encodeURIComponent(prefix)}`, {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const codeInput = document.getElementById('cust_customer_code');
+            if (codeInput && !codeInput.value) {
+                codeInput.value = data.next_code || '';
+            }
+        })
+        .catch(() => {});
+    }
 });
 </script>
 @endpush

@@ -24,31 +24,34 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Customer CRUD + activation
-    Route::resource('customers', CustomerController::class);
+    // Customer routes (offcanvas: create & edit terpisah dihapus)
+    Route::get('customers/suggest-code', [CustomerController::class, 'suggestCode'])
+        ->name('customers.suggest-code');
+    Route::resource('customers', CustomerController::class)->except(['create', 'edit']);
     Route::post('customers/{customer}/activation', [CustomerController::class, 'generateActivation'])
         ->name('customers.activation.generate');
 
-    // Invoice CRUD (shallow nesting)
-    Route::get('customers/{customer}/invoices/create', [InvoiceController::class, 'create'])
-        ->name('customers.invoices.create');
+    // Invoice routes (offcanvas: create & edit terpisah dihapus)
+    Route::resource('invoices', InvoiceController::class)->except(['create', 'edit']);
     Route::post('customers/{customer}/invoices', [InvoiceController::class, 'store'])
         ->name('customers.invoices.store');
-    Route::get('invoices/{invoice}/edit', [InvoiceController::class, 'edit'])
-        ->name('invoices.edit');
-    Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])
-        ->name('invoices.update');
-    Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])
-        ->name('invoices.destroy');
 
     // Import
     Route::get('imports', [ImportController::class, 'index'])->name('imports.index');
     Route::get('imports/template', [ImportController::class, 'template'])->name('imports.template');
+    Route::get('imports/template-xlsx', [ImportController::class, 'templateXlsx'])->name('imports.template.xlsx');
+    Route::get('imports/template-csv', [ImportController::class, 'templateCsv'])->name('imports.template.csv');
+    Route::get('imports/upload', fn () => redirect()->route('imports.index'));
     Route::post('imports/upload', [ImportController::class, 'upload'])
         ->name('imports.upload')->middleware('throttle:10,1');
+    Route::get('imports/preview/{token}', [ImportController::class, 'preview'])
+        ->name('imports.preview');
+    Route::get('imports/confirm', fn () => redirect()->route('imports.index'));
     Route::post('imports/confirm', [ImportController::class, 'confirm'])
         ->name('imports.confirm')->middleware('throttle:10,1');
-    Route::get('imports/{importBatch}', [ImportController::class, 'show'])->name('imports.show');
+    Route::get('imports/{importBatch}', [ImportController::class, 'show'])
+        ->name('imports.show')
+        ->whereNumber('importBatch');
 
     // Export
     Route::get('export/customers', [ExportController::class, 'customers'])
@@ -56,8 +59,8 @@ Route::middleware('auth')->group(function () {
     Route::get('export/invoices', [ExportController::class, 'invoices'])
         ->name('export.invoices')->middleware('throttle:20,1');
 
-    // Announcements
-    Route::resource('announcements', AnnouncementController::class)->except(['show']);
+    // Announcements (offcanvas: create & edit terpisah dihapus)
+    Route::resource('announcements', AnnouncementController::class)->except(['create', 'edit']);
 
     // Settings
     Route::get('settings/noc', [SettingsController::class, 'edit'])->name('settings.noc');

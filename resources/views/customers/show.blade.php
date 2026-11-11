@@ -4,317 +4,360 @@
 
 @section('content')
 
-{{-- Header --}}
-<div class="d-flex align-items-center justify-content-between mb-4">
+{{-- ── Page Header ─────────────────────────────────────────────── --}}
+<div class="page-header">
     <div class="d-flex align-items-center gap-3">
         <a href="{{ route('customers.index') }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Kembali
         </a>
         <div>
-            <h1 class="h4 fw-bold mb-0">{{ $customer->name }}</h1>
-            <code class="text-primary small">{{ $customer->customer_code }}</code>
+            <h1 class="page-title">{{ $customer->name }}</h1>
+            <span class="font-monospace text-primary fw-semibold small">{{ $customer->customer_code }}</span>
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ route('customers.edit', $customer) }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-pencil me-1"></i>Edit
-        </a>
-        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-customer"
-                data-name="{{ $customer->name }}"
-                data-action="{{ route('customers.destroy', $customer) }}">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-edit-current-customer">
+            <i class="bi bi-pencil me-1"></i>Ubah Data
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="btn-delete-current-customer">
             <i class="bi bi-trash me-1"></i>Hapus
         </button>
     </div>
 </div>
 
-{{-- Customer info card --}}
+{{-- ── Kartu Rincian Profil Pelanggan ──────────────────────────── --}}
 <div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-person-lines-fill me-2 text-primary"></i>Rincian Profil Pelanggan</span>
+        <span class="badge bg-{{ $customer->serviceStatusColor() }}">{{ $customer->service_status }}</span>
+    </div>
     <div class="card-body">
         <div class="row g-3">
             <div class="col-sm-6 col-md-3">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">Kode Pelanggan</p>
-                <p class="mb-0 fw-bold font-monospace">{{ $customer->customer_code }}</p>
+                <div class="text-muted small fw-semibold text-uppercase" style="font-size:.7rem;">ID Pelanggan</div>
+                <div class="fw-bold font-monospace text-primary">{{ $customer->customer_code }}</div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">Paket</p>
-                <p class="mb-0">
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-semibold">
-                        {{ $customer->package }}
-                    </span>
-                </p>
+                <div class="text-muted small fw-semibold text-uppercase" style="font-size:.7rem;">Paket Internet</div>
+                <div><span class="badge bg-light text-dark border">{{ $customer->package }}</span></div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">Status Layanan</p>
-                <p class="mb-0">
-                    <span class="badge bg-{{ $customer->serviceStatusColor() }}">{{ $customer->service_status }}</span>
-                </p>
+                <div class="text-muted small fw-semibold text-uppercase" style="font-size:.7rem;">Jenis Tagihan</div>
+                <div class="small">{{ $customer->billing_type }}</div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">Mulai Berlangganan</p>
-                <p class="mb-0">{{ tgl_indo($customer->subscribed_at) }}</p>
+                <div class="text-muted small fw-semibold text-uppercase" style="font-size:.7rem;">Mulai Berlangganan</div>
+                <div class="small">{{ tgl_indo($customer->subscribed_at) }}</div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">No. Telepon</p>
-                <p class="mb-0 font-monospace small">{{ $customer->phone ?? '—' }}</p>
+                <div class="text-muted small fw-semibold text-uppercase" style="font-size:.7rem;">Nomor Telepon</div>
+                <div class="small">{{ $customer->phone ?? '—' }}</div>
             </div>
-            <div class="col-sm-6 col-md-3">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">Jenis Tagihan</p>
-                <p class="mb-0">{{ $customer->billing_type }}</p>
-            </div>
-            <div class="col-sm-6 col-md-6">
-                <p class="text-muted small mb-1 fw-semibold text-uppercase" style="font-size:.7rem;letter-spacing:.5px;">Alamat</p>
-                <p class="mb-0">{{ $customer->address }}</p>
+            <div class="col-sm-6 col-md-9">
+                <div class="text-muted small fw-semibold text-uppercase" style="font-size:.7rem;">Alamat Pemasangan</div>
+                <div class="small" style="white-space: pre-line;">{{ $customer->address }}</div>
             </div>
         </div>
     </div>
 </div>
 
-{{-- Activation panel --}}
+{{-- ── Panel Akun & Aktivasi Mobile ────────────────────────────── --}}
 <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-shield-lock me-2"></i>Akun Aplikasi Mobile</span>
+        <span><i class="bi bi-phone me-2 text-primary"></i>Aktivasi Akun Aplikasi Mobile</span>
         <span class="badge bg-{{ $customer->activationStatusColor() }}">
             {{ $customer->activationStatusLabel() }}
         </span>
     </div>
     <div class="card-body">
-
-        {{-- Show activation code ONCE --}}
-        @if ($activationCode)
-            <div class="alert alert-warning d-flex gap-3 align-items-start mb-3">
-                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1 fs-5"></i>
-                <div>
-                    <div class="fw-bold mb-1">Kode Aktivasi (tampil sekali saja):</div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="font-monospace fs-4 fw-bold letter-spacing-2" id="activation-code-display">
-                            {{ $activationCode }}
-                        </span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-copy-code"
-                                onclick="copyCode()">
-                            <i class="bi bi-clipboard"></i> Salin
-                        </button>
-                    </div>
-                    <div class="text-muted small mt-1">
-                        Berikan kode ini ke pelanggan. Kode berlaku 7 hari.
-                        Setelah halaman ini ditutup/direfresh, kode tidak bisa ditampilkan lagi.
-                    </div>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <p class="mb-1 fw-semibold small">
+                    @if ($customer->activationStatus() === 'active')
+                        <i class="bi bi-check-circle-fill text-success me-1"></i>Pelanggan telah mengaktifkan aplikasi mobile.
+                    @elseif ($customer->activationStatus() === 'locked_temporary')
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>Akun terkunci sementara hingga {{ $customer->activation_locked_until?->locale('id')->isoFormat('HH:mm') }}.
+                    @elseif ($customer->activationStatus() === 'locked_permanent')
+                        <i class="bi bi-x-circle-fill text-danger me-1"></i>Akun terkunci permanen karena salah 100×. Buat kode aktivasi baru untuk membuka.
+                    @else
+                        <i class="bi bi-info-circle text-muted me-1"></i>Pelanggan belum mengaktifkan aplikasi mobile.
+                    @endif
+                </p>
+                <div class="text-muted small" style="font-size:0.75rem;">
+                    Pembuatan kode baru akan mereset kata sandi lama dan mencabut seluruh token sesi pelanggan.
                 </div>
             </div>
-        @endif
-
-        <div class="d-flex align-items-center gap-3">
-            <form method="POST" action="{{ route('customers.activation.generate', $customer) }}"
-                  id="form-gen-code" onsubmit="return confirmGenerate()">
-                @csrf
-                <button type="submit" class="btn btn-warning btn-sm" id="btn-gen-code">
-                    <i class="bi bi-key me-1"></i>Buat Kode Aktivasi
+            <div>
+                <button type="button" class="btn btn-sm btn-warning fw-semibold px-3" id="btn-generate-activation">
+                    <i class="bi bi-key-fill me-1"></i>Buat Kode Baru
                 </button>
-            </form>
-            <span class="text-muted small">
-                @if ($customer->activationStatus() === 'active')
-                    Membuat kode baru akan <strong>mencabut akses login</strong> pelanggan.
-                @elseif ($customer->activationStatus() === 'locked_temporary')
-                    Pelanggan salah memasukkan kode 5×. Terkunci sementara hingga {{ $customer->activation_locked_until?->locale('id')->isoFormat('HH:mm') }}.
-                @elseif ($customer->activationStatus() === 'locked_permanent')
-                    Pelanggan salah memasukkan kode 20×. Akun terkunci, silakan buat kode aktivasi baru.
-                @else
-                    Pelanggan belum bisa login ke aplikasi mobile.
-                @endif
-            </span>
+            </div>
         </div>
     </div>
 </div>
 
-
-{{-- Invoices section --}}
+{{-- ── Riwayat Tagihan (DataTables Server-Side) ─────────────────── --}}
 <div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="h5 fw-bold mb-0">Riwayat Tagihan</h2>
+    <h2 class="h5 fw-bold mb-0">Riwayat Tagihan Pelanggan</h2>
     <div class="d-flex gap-2">
-        <a href="{{ route('export.invoices', array_merge(array_filter($filters), ['search' => $customer->customer_code])) }}"
-           id="btn-export-invoices"
-           class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-           title="Export tagihan pelanggan ini">
-            <i class="bi bi-download"></i>Export CSV
+        <a href="{{ route('export.invoices', ['search' => $customer->customer_code]) }}" class="btn btn-sm btn-success">
+            <i class="bi bi-download me-1"></i>Ekspor CSV
         </a>
-        <a href="{{ route('customers.invoices.create', $customer) }}"
-           id="btn-tambah-tagihan" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
-            <i class="bi bi-plus-lg"></i>Tambah Tagihan
-        </a>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-add-customer-invoice">
+            <i class="bi bi-plus-lg me-1"></i>Tambah Tagihan
+        </button>
     </div>
 </div>
 
-{{-- Invoice filter --}}
+{{-- Filter Tagihan Pelanggan --}}
 <div class="card mb-3">
     <div class="card-body py-2">
-        <form id="invoice-filter-form" method="GET" action="{{ route('customers.show', $customer) }}">
-            <div class="row g-2 align-items-end">
-                <div class="col-sm-3" style="min-width:130px;">
-                    <label class="form-label small fw-semibold text-muted mb-1">Status</label>
-                    <select name="status" id="inv-select-status" class="form-select form-select-sm">
-                        <option value="">Semua Status</option>
-                        <option value="PAID" @selected(($filters['status'] ?? '') === 'PAID')>Lunas</option>
-                        <option value="UNPAID" @selected(($filters['status'] ?? '') === 'UNPAID')>Belum Bayar</option>
-                    </select>
-                </div>
-                <div class="col-sm-3" style="min-width:140px;">
-                    <label class="form-label small fw-semibold text-muted mb-1">Periode</label>
-                    <input type="month" name="period" id="inv-input-period" class="form-control form-control-sm"
-                           value="{{ $filters['period'] ?? '' }}">
-                </div>
-                <div class="col-sm-2" style="min-width:110px;">
-                    <label class="form-label small fw-semibold text-muted mb-1">Tahun</label>
-                    <select name="year" id="inv-select-year" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        @foreach ($years as $y)
-                            <option value="{{ $y }}" @selected(($filters['year'] ?? '') == $y)>{{ $y }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-auto d-flex gap-2">
-                    <button type="submit" id="btn-filter-inv" class="btn btn-primary btn-sm px-3">
-                        <i class="bi bi-funnel me-1"></i>Filter
-                    </button>
-                    <a href="{{ route('customers.show', $customer) }}" class="btn btn-outline-secondary btn-sm px-3">
-                        <i class="bi bi-x-circle me-1"></i>Reset
-                    </a>
-                </div>
+        <form id="filter-customer-invoices-form" class="row g-2 align-items-center">
+            <input type="hidden" name="customer_id" value="{{ $customer->id }}">
+
+            <div class="col-6 col-md-3">
+                <select name="status" id="filter-inv-status" class="form-select form-select-sm">
+                    <option value="">Semua Status</option>
+                    <option value="PAID">Lunas</option>
+                    <option value="UNPAID">Belum Bayar</option>
+                </select>
             </div>
-            @if (!empty($filters['sort']))
-                <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
-            @endif
-            @if (!empty($filters['direction']))
-                <input type="hidden" name="direction" value="{{ $filters['direction'] }}">
-            @endif
+
+            <div class="col-6 col-md-3">
+                <input type="month" name="period" id="filter-inv-period" class="form-control form-control-sm"
+                       placeholder="Filter Periode">
+            </div>
+
+            <div class="col-6 col-md-3">
+                <select name="year" id="filter-inv-year" class="form-select form-select-sm">
+                    <option value="">Semua Tahun</option>
+                    @foreach ($years as $y)
+                        <option value="{{ $y }}">{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-6 col-md-3 text-end">
+                <button type="button" id="btn-reset-inv-filter" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                </button>
+            </div>
         </form>
     </div>
 </div>
 
-{{-- Invoices results info --}}
-<div class="mb-2 px-1">
-    <span class="text-muted small">
-        @if ($invoices->total() > 0)
-            Menampilkan <strong>{{ $invoices->firstItem() }}–{{ $invoices->lastItem() }}</strong>
-            dari <strong>{{ $invoices->total() }}</strong> tagihan
-        @else
-            Tidak ada tagihan yang cocok.
-        @endif
-    </span>
-</div>
-
-{{-- Invoices table --}}
+{{-- Tabel DataTables Tagihan Pelanggan --}}
 <div class="card">
-    <div class="card-body p-0">
-        @if ($invoices->isEmpty())
-            <div class="text-center py-5 text-muted">
-                <i class="bi bi-receipt fs-1 d-block mb-2 opacity-25"></i>
-                <p class="fw-semibold mb-1">Belum ada tagihan</p>
-                @if (array_filter(array_diff_key($filters, ['sort' => 1, 'direction' => 1])))
-                    <a href="{{ route('customers.show', $customer) }}" class="btn btn-sm btn-outline-secondary mt-1">Reset Filter</a>
-                @else
-                    <a href="{{ route('customers.invoices.create', $customer) }}" class="btn btn-sm btn-primary mt-1">
-                        <i class="bi bi-plus-lg me-1"></i>Tambah Tagihan Pertama
-                    </a>
-                @endif
-            </div>
-        @else
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="invoices-table">
-                    <thead>
-                        <tr>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'period', 'label' => 'Periode', 'filters' => $filters, 'routeName' => 'customers.show', 'routeParams' => ['customer' => $customer->id]])</th>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'deferred_amount', 'label' => 'Nominal Ditangguhkan', 'filters' => $filters, 'routeName' => 'customers.show', 'routeParams' => ['customer' => $customer->id]])</th>
-                            <th>@include('layouts.partials.sort-th', ['col' => 'status', 'label' => 'Status', 'filters' => $filters, 'routeName' => 'customers.show', 'routeParams' => ['customer' => $customer->id]])</th>
-                            <th class="text-end">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($invoices as $invoice)
-                            <tr>
-                                <td class="fw-semibold">{{ bulan_indo($invoice->period) }}</td>
-                                <td>{{ rupiah($invoice->deferred_amount) }}</td>
-                                <td>
-                                    @if ($invoice->status === 'PAID')
-                                        <span class="badge badge-paid px-2 py-1">
-                                            <i class="bi bi-check-circle me-1"></i>Lunas
-                                        </span>
-                                    @else
-                                        <span class="badge badge-unpaid px-2 py-1">
-                                            <i class="bi bi-clock me-1"></i>Belum Bayar
-                                        </span>
-                                    @endif
-                                </td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <a href="{{ route('invoices.edit', $invoice) }}"
-                                           class="btn btn-sm btn-outline-secondary" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-danger btn-delete-invoice"
-                                                data-name="tagihan {{ bulan_indo($invoice->period) }}"
-                                                data-action="{{ route('invoices.destroy', $invoice) }}"
-                                                title="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            @if ($invoices->hasPages())
-                <div class="d-flex justify-content-center py-3 border-top">
-                    {{ $invoices->links('pagination::bootstrap-5') }}
-                </div>
-            @endif
-        @endif
+    <div class="card-body p-3">
+        <table id="customer-invoices-table" class="table table-hover align-middle mb-0 w-100">
+            <thead>
+                <tr>
+                    <th>No. Tagihan</th>
+                    <th>Periode</th>
+                    <th>Jatuh Tempo</th>
+                    <th class="text-end">Nominal Tagihan</th>
+                    <th>Status</th>
+                    <th class="d-none d-lg-table-cell">Waktu Bayar</th>
+                    <th class="text-end" style="width: 80px;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 </div>
 
-{{-- Delete modal (shared) --}}
-@include('layouts.partials.confirm-delete-modal')
+{{-- ── Offcanvas Pelanggan (untuk ubah data) ───────────────────── --}}
+@include('customers.partials.offcanvas', [
+    'packages'     => \App\Models\Customer::select('package')->distinct()->orderBy('package')->pluck('package'),
+    'billingTypes' => \App\Models\Customer::select('billing_type')->distinct()->orderBy('billing_type')->pluck('billing_type'),
+])
+
+{{-- ── Offcanvas Tagihan (untuk tambah & ubah tagihan) ─────────── --}}
+@include('invoices.partials.offcanvas', [
+    'customers' => collect([$customer]),
+])
 
 @endsection
 
 @push('scripts')
 <script>
-// Activation: copy code to clipboard
-function copyCode() {
-    var code = document.getElementById('activation-code-display');
-    if (code) {
-        navigator.clipboard.writeText(code.textContent.trim()).then(function () {
-            var btn = document.getElementById('btn-copy-code');
-            btn.innerHTML = '<i class="bi bi-check-lg"></i> Tersalin!';
-            btn.classList.add('btn-success'); btn.classList.remove('btn-outline-secondary');
-            setTimeout(function () {
-                btn.innerHTML = '<i class="bi bi-clipboard"></i> Salin';
-                btn.classList.remove('btn-success'); btn.classList.add('btn-outline-secondary');
-            }, 2000);
-        });
-    }
-}
+document.addEventListener('DOMContentLoaded', function () {
+    const customerId = {{ $customer->id }};
 
-// Activation: confirm before generate
-function confirmGenerate() {
-    return confirm('Buat kode aktivasi baru?\n\nJika pelanggan sudah aktif, akses login mereka akan dicabut sampai mereka menggunakan kode baru ini.');
-}
-
-// Wire delete buttons (customer + invoices)
-document.querySelectorAll('.btn-delete-customer, .btn-delete-invoice').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        document.getElementById('delete-modal-name').textContent = this.dataset.name;
-        document.getElementById('delete-form').action = this.dataset.action;
-        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    // 1. Inisialisasi CRUD Offcanvas Customer (Ubah & Hapus)
+    const crudCustomer = window.initCrudOffcanvas({
+        offcanvasSelector: '#offcanvas-customer',
+        storeUrl: '{{ route('customers.store') }}',
+        baseUrl: '{{ url('customers') }}',
+        editTitle: 'Ubah Data Pelanggan',
+        onSuccess: function () {
+            window.location.reload();
+        }
     });
-});
 
-// Spinner on invoice filter submit
-document.getElementById('invoice-filter-form').addEventListener('submit', function () {
-    var btn = document.getElementById('btn-filter-inv');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memfilter...';
-    btn.disabled = true;
+    document.getElementById('btn-edit-current-customer')?.addEventListener('click', function () {
+        crudCustomer.openEdit(customerId, '{{ route('customers.show', $customer) }}');
+    });
+
+    document.getElementById('btn-delete-current-customer')?.addEventListener('click', function () {
+        crudCustomer.deleteItem(
+            '{{ route('customers.destroy', $customer) }}',
+            'Hapus pelanggan "{{ $customer->name }}" beserta seluruh riwayat tagihannya?'
+        );
+    });
+
+    // 2. Inisialisasi DataTable Tagihan Pelanggan
+    const invoiceTable = window.initServerTable('#customer-invoices-table', {
+        ajaxUrl: '{{ route('invoices.index') }}',
+        filterForm: '#filter-customer-invoices-form',
+        resetButton: '#btn-reset-inv-filter',
+        pageLength: 10,
+        order: [[1, 'desc']], // default period desc
+        columns: [
+            {
+                data: 'invoice_number',
+                name: 'invoice_number',
+                render: function (data) {
+                    return `<span class="font-monospace small text-primary fw-semibold">${window.escapeHtml(data || '—')}</span>`;
+                }
+            },
+            {
+                data: 'period',
+                name: 'period',
+                render: function (data) {
+                    return `<span class="fw-semibold">${window.escapeHtml(data)}</span>`;
+                }
+            },
+            {
+                data: 'due_date',
+                name: 'due_date',
+                render: function (data) {
+                    return data ? window.formatTanggalIndo(data) : '<span class="text-muted">—</span>';
+                }
+            },
+            {
+                data: 'deferred_amount',
+                name: 'deferred_amount',
+                className: 'text-end fw-semibold',
+                render: function (data) {
+                    return window.formatRupiah(data);
+                }
+            },
+            {
+                data: 'status',
+                name: 'status',
+                render: function (data) {
+                    if (data === 'PAID') {
+                        return '<span class="badge badge-paid px-2 py-1"><i class="bi bi-check-circle me-1"></i>Lunas</span>';
+                    }
+                    return '<span class="badge badge-unpaid px-2 py-1"><i class="bi bi-clock me-1"></i>Belum Bayar</span>';
+                }
+            },
+            {
+                data: 'paid_at',
+                name: 'paid_at',
+                className: 'd-none d-lg-table-cell small text-muted',
+                render: function (data) {
+                    return data ? window.formatTanggalIndo(data) : '<span class="text-muted">—</span>';
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                className: 'text-end text-nowrap',
+                render: function (data, type, row) {
+                    return `
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary py-1 px-2 btn-edit-invoice"
+                                    data-id="${row.id}" data-url="${row.urls.show}" title="Ubah Tagihan">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger py-1 px-2 btn-delete-invoice"
+                                    data-url="${row.urls.delete}" data-period="${window.escapeHtml(row.period)}" title="Hapus Tagihan">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ]
+    });
+
+    // 3. Inisialisasi CRUD Offcanvas Tagihan
+    const crudInvoice = window.initCrudOffcanvas({
+        offcanvasSelector: '#offcanvas-invoice',
+        storeUrl: '{{ route('invoices.store') }}',
+        baseUrl: '{{ url('invoices') }}',
+        createTitle: 'Tambah Tagihan Baru',
+        editTitle: 'Ubah Data Tagihan',
+        table: invoiceTable,
+        onOpenCreate: function (form) {
+            // Sembunyikan/kunci pilihan customer karena konteksnya sudah di pelanggan ini
+            const customerSelect = form.elements['customer_id'];
+            if (customerSelect) {
+                customerSelect.value = customerId;
+                document.getElementById('invoice-customer-field').style.display = 'none';
+            }
+        },
+        onOpenEdit: function (form) {
+            document.getElementById('invoice-customer-field').style.display = 'none';
+        }
+    });
+
+    // Buka Tambah Tagihan
+    document.getElementById('btn-add-customer-invoice')?.addEventListener('click', function () {
+        crudInvoice.openCreate({ customer_id: customerId });
+    });
+
+    // Edit Tagihan
+    $('#customer-invoices-table').on('click', '.btn-edit-invoice', function () {
+        const id = $(this).data('id');
+        const url = $(this).data('url');
+        crudInvoice.openEdit(id, url);
+    });
+
+    // Hapus Tagihan
+    $('#customer-invoices-table').on('click', '.btn-delete-invoice', function () {
+        const url = $(this).data('url');
+        const period = $(this).data('period');
+        crudInvoice.deleteItem(url, `Hapus tagihan periode ${period}?`);
+    });
+
+    // 4. Tombol Buat Kode Aktivasi dengan Konfirmasi Modal Swal (Poin B)
+    document.getElementById('btn-generate-activation')?.addEventListener('click', async function () {
+        const result = await window.confirmAction({
+            title: 'Buat Kode Aktivasi Baru?',
+            text: 'Jika pelanggan sudah aktif sebelumnya, akses login aplikasi mobile akan dicabut sampai pelanggan melakukan aktivasi dengan kode baru ini.',
+            confirmButtonText: 'Ya, buat kode',
+            cancelButtonText: 'Batal',
+            confirmButtonClass: 'btn btn-warning',
+        });
+
+        if (!result.isConfirmed) return;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const res = await fetch('{{ route('customers.activation.generate', $customer) }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                }
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Gagal membuat kode aktivasi.');
+            }
+
+            // Tampilkan modal SweetAlert2 TANPA timer dengan tombol salin (poin B)
+            window.showActivationCodeModal(data.code, data.customer_name);
+        } catch (err) {
+            window.showToast('error', err.message || 'Gagal memproses kode aktivasi.');
+        }
+    });
 });
 </script>
 @endpush

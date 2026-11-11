@@ -31,6 +31,20 @@ class Invoice extends Model
         ];
     }
 
+    public function setPeriodAttribute($value): void
+    {
+        if (! $value) {
+            $this->attributes['period'] = null;
+            return;
+        }
+
+        $date = $value instanceof \Carbon\CarbonInterface
+            ? $value
+            : \Carbon\Carbon::parse($value);
+
+        $this->attributes['period'] = $date->startOfMonth()->format('Y-m-d');
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
@@ -42,14 +56,16 @@ class Invoice extends Model
     {
         static::creating(function (Invoice $invoice) {
             if (! $invoice->invoice_number) {
-                $invoice->invoice_number = 'DRAFT-' . uniqid();
+                $invoice->invoice_number = 'DRAFT-' . uniqid() . '-' . bin2hex(random_bytes(4));
             }
         });
 
         static::created(function (Invoice $invoice) {
-            $invoice->updateQuietly([
-                'invoice_number' => self::generateNumber($invoice),
-            ]);
+            if (str_starts_with((string) $invoice->invoice_number, 'DRAFT-')) {
+                $invoice->forceFill([
+                    'invoice_number' => self::generateNumber($invoice),
+                ])->saveQuietly();
+            }
         });
 
         static::updating(function (Invoice $invoice) {
@@ -70,10 +86,33 @@ class Invoice extends Model
 
     public static function generateNumber(Invoice $invoice): string
     {
-        $period = $invoice->period instanceof \Carbon\Carbon
+        $period = $invoice->period instanceof \Carbon\CarbonInterface
             ? $invoice->period
             : \Carbon\Carbon::parse($invoice->period);
 
-        return 'INV-' . $period->format('Ym') . '-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT);
+        return 'INV-' . $period->format('Ym') . '-' . str_pad((string) $invoice->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Ganti semua invoice_number berawalan DRAFT- menjadi format resmi INV-YYYYMM-{id 6 digit}.
+     */
+    public static function fixDraftNumbers(?array $ids = null): int
+    {
+        $query = self::where('invoice_number', 'like', 'DRAFT-%');
+        if ($ids !== null && count($ids) > 0) {
+            $query->whereIn('id', $ids);
+        }
+
+        $count = 0;
+        $query->chunkById(100, function ($invoices) use (&$count) {
+            foreach ($invoices as $invoice) {
+                $invoice->forceFill([
+                    'invoice_number' => self::generateNumber($invoice),
+                ])->saveQuietly();
+                $count++;
+            }
+        });
+
+        return $count;
     }
 }

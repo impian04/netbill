@@ -29,8 +29,10 @@ class StoreInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
-        $customerId = $this->route('customer')->id;
+        $customerId = $this->route('customer')?->id ?? $this->input('customer_id');
 
+        return [
+            'customer_id'       => $this->route('customer') ? ['nullable'] : ['required', 'exists:customers,id'],
             'period'            => ['required', 'date', Rule::unique('invoices')->where('customer_id', $customerId)],
             'deferred_amount'   => ['required', 'integer', 'min:0', 'max:999999999999'],
             'status'            => ['required', Rule::in(['PAID', 'UNPAID'])],
@@ -42,6 +44,8 @@ class StoreInvoiceRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'customer_id.required'     => 'Pelanggan wajib dipilih.',
+            'customer_id.exists'       => 'Pelanggan tidak valid.',
             'period.required'          => 'Periode wajib diisi.',
             'period.unique'            => 'Tagihan untuk periode ini sudah ada.',
             'period.date'              => 'Format periode tidak valid.',

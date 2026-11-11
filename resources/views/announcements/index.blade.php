@@ -1,90 +1,183 @@
 @extends('layouts.app')
+
 @section('title', 'Pengumuman')
+
 @section('content')
 
-<div class="d-flex align-items-center justify-content-between mb-4">
+{{-- ── Page Header ─────────────────────────────────────────────── --}}
+<div class="page-header">
     <div>
-        <h1 class="h4 fw-bold mb-0">Pengumuman</h1>
-        <p class="text-muted small mb-0">Diakses oleh pelanggan melalui aplikasi mobile</p>
+        <h1 class="page-title">Pengumuman Pelanggan</h1>
+        <p class="page-subtitle">Kelola pesan dan informasi operasional yang tampil pada aplikasi mobile pelanggan</p>
     </div>
-    <a href="{{ route('announcements.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-plus-lg"></i>Tambah
-    </a>
+    <div>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-open-create-announcement">
+            <i class="bi bi-plus-lg me-1"></i>Buat Pengumuman
+        </button>
+    </div>
 </div>
 
-@if (session('success'))
-    <div class="alert alert-success d-flex gap-2 py-2 mb-3">
-        <i class="bi bi-check-circle-fill"></i>{{ session('success') }}
-    </div>
-@endif
-
-<div class="card">
-    <div class="card-body p-0">
-        @if ($announcements->isEmpty())
-            <div class="text-center py-5 text-muted">
-                <i class="bi bi-megaphone fs-1 d-block mb-2 opacity-25"></i>
-                <p class="fw-semibold mb-0">Belum ada pengumuman.</p>
-            </div>
-        @else
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="announcements-table">
-                    <thead>
-                        <tr>
-                            <th>Judul</th>
-                            <th class="text-center">Aktif</th>
-                            <th>Tayang</th>
-                            <th>Kedaluwarsa</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($announcements as $a)
-                            <tr>
-                                <td class="fw-medium">{{ $a->title }}</td>
-                                <td class="text-center">
-                                    @if ($a->is_active)
-                                        <span class="badge bg-success">Aktif</span>
-                                    @else
-                                        <span class="badge bg-secondary">Nonaktif</span>
-                                    @endif
-                                </td>
-                                <td class="small text-muted">{{ $a->published_at ? tgl_indo($a->published_at) : '—' }}</td>
-                                <td class="small text-muted">{{ $a->expires_at ? tgl_indo($a->expires_at) : '—' }}</td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <a href="{{ route('announcements.edit', $a) }}"
-                                           class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                                        <button class="btn btn-sm btn-outline-danger btn-delete"
-                                                data-name="{{ $a->title }}"
-                                                data-action="{{ route('announcements.destroy', $a) }}">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @if ($announcements->hasPages())
-                <div class="d-flex justify-content-center py-3 border-top">
-                    {{ $announcements->links('pagination::bootstrap-5') }}
+{{-- ── Kartu Filter (row g-2) ──────────────────────────────────── --}}
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form id="filter-announcements-form" class="row g-2 align-items-center">
+            <div class="col-12 col-lg-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                    <input type="search" id="filter-ann-search" name="search" class="form-control form-control-sm"
+                           placeholder="Cari judul atau isi pengumuman...">
                 </div>
-            @endif
-        @endif
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <select name="status" id="filter-ann-status" class="form-select form-select-sm">
+                    <option value="">Semua Status Tayang</option>
+                    <option value="1">Aktif</option>
+                    <option value="0">Nonaktif</option>
+                </select>
+            </div>
+
+            <div class="col-6 col-lg-2 ms-lg-auto text-end">
+                <button type="button" id="btn-reset-ann-filter" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
-@include('layouts.partials.confirm-delete-modal')
+{{-- ── Kartu Tabel DataTables Server-Side ───────────────────────── --}}
+<div class="card">
+    <div class="card-body p-3">
+        <table id="announcements-table" class="table table-hover align-middle mb-0 w-100">
+            <thead>
+                <tr>
+                    <th>Judul Pengumuman</th>
+                    <th class="text-center" style="width: 100px;">Status</th>
+                    <th>Tayang Mulai</th>
+                    <th>Kedaluwarsa</th>
+                    <th class="d-none d-lg-table-cell">Dibuat Pada</th>
+                    <th class="text-end" style="width: 80px;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+{{-- ── Offcanvas Form Pengumuman (Tambah & Ubah) ────────────────── --}}
+@include('announcements.partials.offcanvas')
+
 @endsection
 
 @push('scripts')
 <script>
-document.querySelectorAll('.btn-delete').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        document.getElementById('delete-modal-name').textContent = this.dataset.name;
-        document.getElementById('delete-form').action = this.dataset.action;
-        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Inisialisasi DataTable Pengumuman Server-Side
+    const table = window.initServerTable('#announcements-table', {
+        ajaxUrl: '{{ route('announcements.index') }}',
+        filterForm: '#filter-announcements-form',
+        searchInput: '#filter-ann-search',
+        resetButton: '#btn-reset-ann-filter',
+        pageLength: 15,
+        order: [[4, 'desc']], // default created_at desc
+        columns: [
+            {
+                data: 'title',
+                name: 'title',
+                render: function (data, type, row) {
+                    return `
+                        <div>
+                            <span class="fw-semibold text-dark">${window.escapeHtml(data)}</span>
+                            <div class="small text-muted text-truncate" style="max-width: 380px;">${window.escapeHtml(row.body || '')}</div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                data: 'is_active',
+                name: 'is_active',
+                className: 'text-center',
+                render: function (data) {
+                    if (data) {
+                        return '<span class="badge bg-success">Aktif</span>';
+                    }
+                    return '<span class="badge bg-secondary">Nonaktif</span>';
+                }
+            },
+            {
+                data: 'published_at',
+                name: 'published_at',
+                className: 'small text-muted',
+                render: function (data) {
+                    return data ? window.formatTanggalIndo(data) : '<span class="text-muted">Langsung</span>';
+                }
+            },
+            {
+                data: 'expires_at',
+                name: 'expires_at',
+                className: 'small text-muted',
+                render: function (data) {
+                    return data ? window.formatTanggalIndo(data) : '<span class="text-muted">Selamanya</span>';
+                }
+            },
+            {
+                data: 'created_at',
+                name: 'created_at',
+                className: 'd-none d-lg-table-cell small text-muted',
+                render: function (data) {
+                    return window.formatTanggalIndo(data);
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                className: 'text-end text-nowrap',
+                render: function (data, type, row) {
+                    return `
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary py-1 px-2 btn-edit-announcement"
+                                    data-id="${row.id}" data-url="${row.urls.show}" title="Ubah Pengumuman">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger py-1 px-2 btn-delete-announcement"
+                                    data-url="${row.urls.delete}" data-title="${window.escapeHtml(row.title)}" title="Hapus Pengumuman">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ]
+    });
+
+    // 2. Inisialisasi CRUD Offcanvas Pengumuman
+    const crudAnnouncement = window.initCrudOffcanvas({
+        offcanvasSelector: '#offcanvas-announcement',
+        storeUrl: '{{ route('announcements.store') }}',
+        baseUrl: '{{ url('announcements') }}',
+        createTitle: 'Buat Pengumuman Baru',
+        editTitle: 'Ubah Data Pengumuman',
+        table: table,
+    });
+
+    // Tombol Buka Tambah Pengumuman
+    document.getElementById('btn-open-create-announcement')?.addEventListener('click', function () {
+        crudAnnouncement.openCreate();
+    });
+
+    // Tombol Ubah Pengumuman (Event Delegation)
+    $('#announcements-table').on('click', '.btn-edit-announcement', function () {
+        const id = $(this).data('id');
+        const url = $(this).data('url');
+        crudAnnouncement.openEdit(id, url);
+    });
+
+    // Tombol Hapus Pengumuman (Event Delegation)
+    $('#announcements-table').on('click', '.btn-delete-announcement', function () {
+        const url = $(this).data('url');
+        const title = $(this).data('title');
+        crudAnnouncement.deleteItem(url, `Hapus pengumuman "${title}"?`);
     });
 });
 </script>

@@ -27,7 +27,7 @@ class ProcessImport implements ShouldQueue
 
     private const CHUNK_SIZE = 100;
 
-    public function __construct(private ImportBatch $batch) {}
+    public function __construct(public ImportBatch $batch) {}
 
     public function handle(): void
     {
@@ -99,13 +99,19 @@ class ProcessImport implements ShouldQueue
                     if ($value instanceof \PhpOffice\PhpSpreadsheet\RichText\RichText) {
                         $value = $value->getPlainText();
                     }
-                    // Date cells: get formatted value
-                    if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTimeFormatCode(
-                        $cell->getStyle()->getNumberFormat()->getFormatCode()
-                    )) {
-                        $value = $cell->getFormattedValue();
+                    // Date cells: get formatted date
+                    if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cell) && is_numeric($value)) {
+                        try {
+                            $value = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
+                        } catch (\Throwable) {
+                            $value = $cell->getFormattedValue();
+                        }
+                    } elseif (is_float($value) || is_int($value)) {
+                        if (floor($value) == $value) {
+                            $value = number_format($value, 0, '', '');
+                        }
                     }
-                    $rowData[] = $value;
+                    $rowData[] = $value !== null ? (string) $value : '';
                 }
                 // Skip completely empty rows
                 if (array_filter($rowData, fn ($v) => $v !== null && $v !== '')) {
@@ -157,17 +163,20 @@ class ProcessImport implements ShouldQueue
             DB::transaction(function () use ($validRows, &$created, &$updated, &$skipped, &$txErrors) {
                 foreach ($validRows as $item) {
                     $result = $this->upsertRow($item['mapped'], $item['row_num']);
-                    if (is_string($result)) {
-                        // Error message returned
-                        $txErrors[] = ['row' => $item['row_num'], 'messages' => [$result]];
-                    } elseif ($result === 'created') {
+                    if ($result === 'created') {
                         $created++;
                     } elseif ($result === 'updated') {
                         $updated++;
                     } elseif ($result === 'skipped') {
                         $skipped++;
+                    } elseif (is_string($result)) {
+                        // Error message returned
+                        $txErrors[] = ['row' => $item['row_num'], 'messages' => [$result]];
                     }
                 }
+
+                // Pastikan seluruh nomor tagihan baru pada chunk ini memiliki format resmi INV-YYYYMM-XXXXXX
+                Invoice::fixDraftNumbers();
             });
         } catch (\Throwable $e) {
             // Whole chunk transaction failed
@@ -200,7 +209,7 @@ class ProcessImport implements ShouldQueue
         $period = RowValidator::parsePeriod($row['periode']);
 
         if (! $period) {
-            return "Baris {$rowNum}: periode tidak dapat diparsing "{$row['periode']}"";
+            return "Baris {$rowNum}: periode tidak dapat diparsing '{$row['periode']}'";
         }
 
         $subscribedAt = RowValidator::parseFlexibleDate($row['tanggal_mulai_berlangganan']);

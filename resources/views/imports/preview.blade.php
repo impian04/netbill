@@ -55,13 +55,14 @@
 </div>
 
 {{-- Confirmation form --}}
-<div class="card" style="max-width:600px;">
+<div class="card">
     <div class="card-header">
         <i class="bi bi-gear me-2"></i>Konfigurasi Import
     </div>
     <div class="card-body">
         <form method="POST" action="{{ route('imports.confirm') }}" id="form-confirm" novalidate>
             @csrf
+            <input type="hidden" name="token" value="{{ $token }}">
             <input type="hidden" name="file_path" value="{{ $filePath }}">
             <input type="hidden" name="original_name" value="{{ $originalName }}">
 
@@ -79,7 +80,7 @@
                     <label class="d-flex align-items-start gap-3 p-3 border rounded cursor-pointer"
                            style="cursor:pointer;" id="policy-skip-label">
                         <input type="radio" name="duplicate_policy" value="skip"
-                               id="policy-skip" class="form-check-input mt-0 flex-shrink-0" checked>
+                               id="policy-skip" class="form-check-input flex-shrink-0" checked>
                         <div>
                             <div class="fw-semibold">
                                 <span class="badge bg-secondary me-1">Lewati</span>
@@ -95,7 +96,7 @@
                     <label class="d-flex align-items-start gap-3 p-3 border rounded cursor-pointer"
                            style="cursor:pointer;" id="policy-update-label">
                         <input type="radio" name="duplicate_policy" value="update"
-                               id="policy-update" class="form-check-input mt-0 flex-shrink-0">
+                               id="policy-update" class="form-check-input flex-shrink-0">
                         <div>
                             <div class="fw-semibold">
                                 <span class="badge bg-primary me-1">Perbarui</span>
@@ -115,7 +116,7 @@
 
             {{-- Summary before confirm --}}
             <div class="alert alert-warning d-flex gap-2 py-2 mb-3" style="font-size:.83rem;">
-                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
                 <span>
                     Proses akan menjalankan <strong>{{ number_format($preview['total_rows']) }}</strong> baris
                     di background. Halaman status akan diperbarui otomatis. Jangan tutup browser sampai selesai.
@@ -156,7 +157,6 @@ document.getElementById('form-confirm').addEventListener('submit', function () {
     var btn = document.getElementById('btn-confirm');
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
     btn.disabled = true;
-    this.querySelectorAll('input[type="radio"]').forEach(function (r) { r.disabled = true; });
 });
 </script>
 @endpush

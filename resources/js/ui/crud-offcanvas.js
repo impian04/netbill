@@ -1,16 +1,92 @@
-import { Offcanvas } from 'bootstrap';
-import { showToast, confirmAction } from './toast.js';
+import { Offcanvas, Modal } from 'bootstrap';
+import { toast, confirmDialog } from './toast.js';
+
+/**
+ * Helper pembuka dan penutup modal/offcanvas tanpa instansiasi langsung di Blade
+ */
+export function showOffcanvas(selectorOrEl) {
+    const el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
+    if (!el) return null;
+    const instance = Offcanvas.getOrCreateInstance(el);
+    instance.show();
+    return instance;
+}
+
+export function hideOffcanvas(selectorOrEl) {
+    const el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
+    if (!el) return null;
+    const instance = Offcanvas.getInstance(el);
+    if (instance) instance.hide();
+    return instance;
+}
+
+export function showModal(selectorOrEl) {
+    const el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
+    if (!el) return null;
+    const instance = Modal.getOrCreateInstance(el);
+    instance.show();
+    return instance;
+}
+
+export function hideModal(selectorOrEl) {
+    const el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
+    if (!el) return null;
+    const instance = Modal.getInstance(el);
+    if (instance) instance.hide();
+    return instance;
+}
+
+/**
+ * Helper fetch CRUD terpusat untuk operasi API agar Blade tidak memanggil fetch langsung
+ */
+export async function apiRequest(url, options = {}) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const method = (options.method || 'GET').toUpperCase();
+    const headers = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrfToken || '',
+        ...(options.headers || {}),
+    };
+
+    let body = options.body;
+    if (body && typeof body === 'object' && !(body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(body);
+    } else if (typeof body === 'string' && !headers['Content-Type'] && (body.startsWith('{') || body.startsWith('['))) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    const res = await fetch(url, {
+        method,
+        headers,
+        body,
+    });
+
+    const resJson = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        const error = new Error(resJson.message || `HTTP ${res.status}: Terjadi kesalahan pada server.`);
+        error.status = res.status;
+        error.data = resJson;
+        throw error;
+    }
+
+    return resJson;
+}
 
 /**
  * Inisialisasi CRUD Offcanvas (Tambah & Ubah dalam 1 offcanvas)
  * @param {object} options
  */
 export function initCrudOffcanvas(options = {}) {
-    const offcanvasEl = document.querySelector(options.offcanvasSelector || '.crud-offcanvas');
+    const offcanvasEl = document.querySelector(options.offcanvasSelector || '.offcanvas');
     if (!offcanvasEl) return null;
 
-    const bsOffcanvas = new Offcanvas(offcanvasEl);
+    const bsOffcanvas = Offcanvas.getOrCreateInstance(offcanvasEl);
     const form = offcanvasEl.querySelector('form');
+    if (!form) return null;
+
     const titleEl = offcanvasEl.querySelector('.offcanvas-title');
     const submitBtn = offcanvasEl.querySelector('button[type="submit"]');
     const originalSubmitHtml = submitBtn ? submitBtn.innerHTML : 'Simpan';
@@ -46,7 +122,7 @@ export function initCrudOffcanvas(options = {}) {
         resetForm();
         if (titleEl) titleEl.textContent = options.createTitle || 'Tambah Data';
         if (methodInput) methodInput.value = 'POST';
-        form.action = options.storeUrl;
+        if (options.storeUrl) form.action = options.storeUrl;
 
         // Jika ada extra data prefill (misal customer_id pada invoice)
         for (const [name, val] of Object.entries(extraData)) {
@@ -73,18 +149,7 @@ export function initCrudOffcanvas(options = {}) {
         form.action = updateUrlTemplate.replace(':id', id);
 
         try {
-            const res = await fetch(fetchUrl || `${options.baseUrl || ''}/${id}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (!res.ok) {
-                throw new Error('Gagal memuat data');
-            }
-
-            const data = await res.json();
+            const data = await apiRequest(fetchUrl || `${options.baseUrl || ''}/${id}`);
             const record = data.data || data;
 
             // Isi nilai input form berdasarkan atribut name
@@ -96,6 +161,8 @@ export function initCrudOffcanvas(options = {}) {
                     } else if (field.type === 'radio') {
                         const radio = form.querySelector(`input[name="${key}"][value="${record[key]}"]`);
                         if (radio) radio.checked = true;
+                    } else if (field.tagName === 'SELECT') {
+                        field.value = record[key] !== null && record[key] !== undefined ? String(record[key]) : '';
                     } else {
                         field.value = record[key] !== null && record[key] !== undefined ? record[key] : '';
                     }
@@ -108,14 +175,125 @@ export function initCrudOffcanvas(options = {}) {
 
             bsOffcanvas.show();
         } catch {
-            showToast('error', 'Gagal memuat rincian data untuk diubah');
+            toast('error', 'Gagal memuat rincian data untuk diubah');
         }
+    }
+
+    // Tampilkan error inline dan fokus ke elemen pertama
+    function displayInlineErrors(errors) {
+        let firstInvalidEl = null;
+
+        for (const [fieldName, messages] of Object.entries(errors)) {
+            let field = form.elements[fieldName];
+
+            // Pemetaan nama field khusus seperti KTP dan Koordinat
+            if (!field) {
+                if (fieldName === 'ktp' || fieldName === 'ktp_file') {
+                    field = form.elements['ktp_file'] || form.elements['ktp'] || form.querySelector('input[type="file"]');
+                } else if (fieldName === 'latitude' || fieldName === 'longitude') {
+                    field = form.elements['coordinates'] || form.elements[fieldName];
+                } else {
+                    field = form.querySelector(`[name="${fieldName}"]`);
+                }
+            }
+
+            const msg = Array.isArray(messages) ? messages[0] : messages;
+            if (field) {
+                field.classList.add('is-invalid');
+                if (!firstInvalidEl) firstInvalidEl = field;
+
+                // Cari container feedback
+                let feedback = field.parentElement?.querySelector('.invalid-feedback')
+                    || document.getElementById(`err-${fieldName}`)
+                    || document.getElementById(`err-${fieldName.replace('_', '-')}`);
+
+                if (!feedback && field.parentElement) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    field.parentElement.appendChild(feedback);
+                }
+
+                if (feedback) {
+                    feedback.textContent = msg;
+                    feedback.style.display = 'block';
+                }
+            }
+        }
+
+        if (firstInvalidEl) {
+            firstInvalidEl.focus();
+        }
+    }
+
+    // Validasi file sisi klien sebelum pengiriman
+    function validateClientFiles() {
+        const fileInputs = form.querySelectorAll('input[type="file"]');
+        const maxBytes = 3 * 1024 * 1024; // 3 MB
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        for (const input of fileInputs) {
+            if (input.files && input.files.length > 0) {
+                const file = input.files[0];
+
+                // Cek ukuran berkas
+                if (file.size > maxBytes) {
+                    input.classList.add('is-invalid');
+                    let feedback = input.parentElement?.querySelector('.invalid-feedback')
+                        || document.getElementById(`err-${input.name}`)
+                        || document.getElementById(`err-${input.name?.replace('_', '-')}`);
+
+                    if (feedback) {
+                        feedback.textContent = 'Ukuran berkas melebihi batas 3 MB.';
+                        feedback.style.display = 'block';
+                    }
+                    input.focus();
+                    try {
+                        toast('warning', 'Ukuran berkas KTP melebihi batas 3 MB.');
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                    return false;
+                }
+
+                // Cek tipe berkas
+                const ext = file.name.split('.').pop()?.toLowerCase();
+                const mimeValid = file.type ? allowedMimes.includes(file.type) : true;
+                const extValid = ext ? allowedExtensions.includes(ext) : false;
+
+                if (!extValid && !mimeValid) {
+                    input.classList.add('is-invalid');
+                    let feedback = input.parentElement?.querySelector('.invalid-feedback')
+                        || document.getElementById(`err-${input.name}`)
+                        || document.getElementById(`err-${input.name?.replace('_', '-')}`);
+
+                    if (feedback) {
+                        feedback.textContent = 'Format berkas harus JPG, PNG, atau WebP.';
+                        feedback.style.display = 'block';
+                    }
+                    input.focus();
+                    try {
+                        toast('warning', 'Format berkas harus JPG, PNG, atau WebP.');
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     // Submit form via fetch
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
         clearFormErrors();
+
+        // Cek validasi berkas di sisi klien terlebih dahulu
+        if (!validateClientFiles()) {
+            return;
+        }
 
         if (submitBtn) {
             submitBtn.disabled = true;
@@ -124,6 +302,13 @@ export function initCrudOffcanvas(options = {}) {
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const formData = new FormData(form);
+
+        // Pastikan checkbox non-disabled selalu mengirim boolean eksplisit ('1' atau '0')
+        form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if (cb.name && !cb.disabled) {
+                formData.set(cb.name, cb.checked ? '1' : '0');
+            }
+        });
 
         // Jika mode edit, tambahkan _method = PUT jika belum ada
         if (isEditMode && !formData.has('_method')) {
@@ -141,33 +326,39 @@ export function initCrudOffcanvas(options = {}) {
                 body: formData,
             });
 
+            // Tangani HTTP 413 Payload Too Large
+            if (res.status === 413) {
+                const fileInput = form.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.classList.add('is-invalid');
+                    let feedback = fileInput.parentElement?.querySelector('.invalid-feedback')
+                        || document.getElementById(`err-${fileInput.name}`)
+                        || document.getElementById(`err-${fileInput.name?.replace('_', '-')}`);
+                    if (feedback) {
+                        feedback.textContent = 'Ukuran berkas melebihi batas server.';
+                        feedback.style.display = 'block';
+                    }
+                    fileInput.focus();
+                }
+                try {
+                    toast('error', 'Ukuran berkas melebihi batas server.');
+                } catch (e) {
+                    console.warn(e);
+                }
+                return;
+            }
+
             const resJson = await res.json().catch(() => ({}));
 
             if (res.status === 422) {
-                // Error validasi form
-                const errors = resJson.errors || {};
-                let firstInvalidEl = null;
+                // Tampilkan error inline SEBELUM toast
+                displayInlineErrors(resJson.errors || {});
 
-                for (const [fieldName, messages] of Object.entries(errors)) {
-                    const field = form.elements[fieldName];
-                    const msg = Array.isArray(messages) ? messages[0] : messages;
-                    if (field) {
-                        field.classList.add('is-invalid');
-                        if (!firstInvalidEl) firstInvalidEl = field;
-
-                        let feedback = field.parentElement.querySelector('.invalid-feedback');
-                        if (!feedback) {
-                            feedback = document.createElement('div');
-                            feedback.className = 'invalid-feedback';
-                            field.parentElement.appendChild(feedback);
-                        }
-                        feedback.textContent = msg;
-                        feedback.style.display = 'block';
-                    }
-                }
-
-                if (firstInvalidEl) {
-                    firstInvalidEl.focus();
+                // Toast ringkas bertipe warning; kegagalan toast tidak boleh hentikan tampilan inline
+                try {
+                    toast('warning', resJson.message || 'Mohon periksa kembali isian formulir Anda.');
+                } catch (toastErr) {
+                    console.warn('[Toast Error]', toastErr);
                 }
                 return;
             }
@@ -181,13 +372,13 @@ export function initCrudOffcanvas(options = {}) {
             if (options.table && typeof options.table.ajax?.reload === 'function') {
                 options.table.ajax.reload(null, false);
             }
-            showToast('success', resJson.message || (isEditMode ? 'Data berhasil diperbarui.' : 'Data berhasil ditambahkan.'));
+            toast('success', resJson.message || (isEditMode ? 'Data berhasil diperbarui.' : 'Data berhasil ditambahkan.'));
 
             if (typeof options.onSuccess === 'function') {
                 options.onSuccess(resJson, isEditMode);
             }
         } catch (err) {
-            showToast('error', err.message || 'Gagal menyimpan data.');
+            toast('error', err.message || 'Gagal menyimpan data.');
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
@@ -198,7 +389,7 @@ export function initCrudOffcanvas(options = {}) {
 
     // Helper Hapus Data dengan Swal konfirmasi + fetch DELETE
     async function deleteItem(deleteUrl, confirmMessage = 'Data yang dihapus tidak dapat dikembalikan.') {
-        const result = await confirmAction({
+        const result = await confirmDialog({
             title: 'Hapus Data?',
             text: confirmMessage,
             confirmButtonText: 'Ya, hapus',
@@ -208,34 +399,19 @@ export function initCrudOffcanvas(options = {}) {
 
         if (!result.isConfirmed) return;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
         try {
-            const res = await fetch(deleteUrl, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                },
-            });
-
-            const resJson = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-                throw new Error(resJson.message || 'Gagal menghapus data.');
-            }
+            const resJson = await apiRequest(deleteUrl, { method: 'DELETE' });
 
             if (options.table && typeof options.table.ajax?.reload === 'function') {
                 options.table.ajax.reload(null, false);
             }
-            showToast('success', resJson.message || 'Data berhasil dihapus.');
+            toast('success', resJson.message || 'Data berhasil dihapus.');
 
             if (typeof options.onDeleteSuccess === 'function') {
                 options.onDeleteSuccess(resJson);
             }
         } catch (err) {
-            showToast('error', err.message || 'Gagal menghapus data.');
+            toast('error', err.message || 'Gagal menghapus data.');
         }
     }
 
@@ -244,5 +420,6 @@ export function initCrudOffcanvas(options = {}) {
         openEdit,
         deleteItem,
         hide: () => bsOffcanvas.hide(),
+        show: () => bsOffcanvas.show(),
     };
 }

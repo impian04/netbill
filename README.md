@@ -53,6 +53,10 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## End-to-End (E2E) Testing
+
+Untuk menjalankan pengujian E2E browser (Playwright Chromium): pastikan database terpisah `db_netbill_e2e` sudah ada di MySQL lokal dan file `.env.e2e` terkonfigurasi. Jalankan perintah `npm run e2e` di terminal. Skrip akan otomatis memuat `.env.e2e`, memverifikasi pengaman database, menyiapkan skema demo via `php artisan e2e:prepare`, menyalakan server lokal pada port 8001, mengeksekusi 29 skenario role (super_admin, admin, surveyor, technician, noc, marketing), dan mematikan server secara otomatis setelah selesai. Untuk melihat laporan visual grafis, jalankan `npm run e2e:report`.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

@@ -50,6 +50,21 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function scopeVisibleTo(\Illuminate\Database\Eloquent\Builder $query, ?User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        if (! $user) {
+            return $query;
+        }
+
+        if ($user->role === \App\Enums\Role::SUPER_ADMIN) {
+            return $query;
+        }
+
+        return $query->whereHas('customer', function ($q) use ($user) {
+            $q->where('customers.pop_id', $user->pop_id);
+        });
+    }
+
     // ── Lifecycle hooks ───────────────────────────────────────────────
 
     protected static function booted(): void

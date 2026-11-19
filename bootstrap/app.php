@@ -13,7 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR |
+                     Request::HEADER_X_FORWARDED_HOST |
+                     Request::HEADER_X_FORWARDED_PORT |
+                     Request::HEADER_X_FORWARDED_PROTO |
+                     Request::HEADER_X_FORWARDED_AWS_ELB
+        );
 
         $middleware->validateCsrfTokens(except: [
             'api/*', // Sanctum token-based, no CSRF needed
@@ -22,10 +29,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // Force JSON for all api/* requests (401/403/404/429/500 all become JSON)
         $middleware->statefulApi(); // Sanctum stateful API support
 
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureUserIsActive::class,
+        ]);
+
         $middleware->alias([
             'abilities'       => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             'ability'         => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
             'customer.active' => \App\Http\Middleware\CheckCustomerActive::class,
+            'role'            => \App\Http\Middleware\EnsureUserRole::class,
+            'active'          => \App\Http\Middleware\EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

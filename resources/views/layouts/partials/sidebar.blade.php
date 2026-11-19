@@ -1,57 +1,32 @@
 <nav id="sidebar">
     <div class="sidebar-brand">
         <div class="brand-icon">
-            <i class="bi bi-wifi text-white"></i>
+            <!-- <i class="bi bi-wifi text-white"></i> -->
+             <img src="{{ asset('images/logo-jcn.png') }}" alt="Logo JCN">
         </div>
         <span class="brand-name">NetBill</span>
     </div>
 
-    <div class="nav-section-label">Menu</div>
+    @foreach(($menuSections ?? []) as $section)
+        <div class="nav-section-label {{ !$loop->first ? 'mt-3' : '' }}">{{ $section['section'] }}</div>
 
-    <ul class="sidebar-nav nav flex-column">
-        <li class="nav-item">
-            <a href="{{ route('dashboard') }}"
-               class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                <i class="bi bi-speedometer2"></i>
-                Dashboard
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ \Illuminate\Support\Facades\Route::has('customers.index') ? route('customers.index') : '#' }}"
-               class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
-                <i class="bi bi-people"></i>
-                Pelanggan
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ \Illuminate\Support\Facades\Route::has('invoices.index') ? route('invoices.index') : '#' }}"
-               class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-                <i class="bi bi-receipt"></i>
-                Tagihan
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('imports.index') }}"
-               class="nav-link {{ request()->routeIs('imports.*') ? 'active' : '' }}">
-                <i class="bi bi-upload"></i>
-                Import Data
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('announcements.index') }}"
-               class="nav-link {{ request()->routeIs('announcements.*') ? 'active' : '' }}">
-                <i class="bi bi-megaphone"></i>
-                Pengumuman
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('settings.noc') }}"
-               class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                <i class="bi bi-telephone"></i>
-                Kontak NOC
-            </a>
-        </li>
-    </ul>
+        <ul class="sidebar-nav nav flex-column">
+            @foreach($section['items'] as $item)
+                <li class="nav-item">
+                    <a href="{{ $item['url'] }}"
+                       class="nav-link d-flex justify-content-between align-items-center {{ $item['is_active'] ? 'active' : '' }}">
+                        <div>
+                            <i class="bi {{ $item['icon'] }}"></i>
+                            {{ $item['label'] }}
+                        </div>
+                        @if(($item['badge_count'] ?? 0) > 0)
+                            <span class="badge bg-warning text-dark">{{ $item['badge_count'] }}</span>
+                        @endif
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    @endforeach
 
     <div class="mt-auto p-3" style="border-top:1px solid rgba(255,255,255,.06);">
         <form method="POST" action="{{ route('logout') }}" id="sidebar-logout-form">

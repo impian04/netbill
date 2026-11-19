@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\Role;
+use App\Models\Pop;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -12,30 +14,78 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
+            'name'              => fake()->name(),
+            'email'             => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'password'          => static::$password ??= Hash::make('password'),
+            'role'              => Role::SUPER_ADMIN,
+            'pop_id'            => null,
+            'phone'             => '628' . fake()->numerify('#########'),
+            'is_active'         => true,
+            'remember_token'    => Str::random(10),
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
+    public function admin(?Pop $pop = null): static
+    {
+        return $this->state(fn () => [
+            'role'   => Role::ADMIN,
+            'pop_id' => $pop?->id ?? Pop::factory(),
+        ]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->state(fn () => [
+            'role'   => Role::SUPER_ADMIN,
+            'pop_id' => null,
+        ]);
+    }
+
+    public function marketing(?Pop $pop = null): static
+    {
+        return $this->state(fn () => [
+            'role'   => Role::MARKETING,
+            'pop_id' => $pop?->id ?? Pop::factory(),
+        ]);
+    }
+
+    public function surveyor(?Pop $pop = null): static
+    {
+        return $this->state(fn () => [
+            'role'   => Role::SURVEYOR,
+            'pop_id' => $pop?->id ?? Pop::factory(),
+        ]);
+    }
+
+    public function technician(?Pop $pop = null): static
+    {
+        return $this->state(fn () => [
+            'role'   => Role::TECHNICIAN,
+            'pop_id' => $pop?->id ?? Pop::factory(),
+        ]);
+    }
+
+    public function noc(): static
+    {
+        return $this->state(fn () => [
+            'role'   => Role::NOC,
+            'pop_id' => null,
+        ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn () => [
+            'is_active' => false,
+        ]);
+    }
+
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [

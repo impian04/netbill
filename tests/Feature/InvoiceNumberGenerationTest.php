@@ -65,11 +65,12 @@ class InvoiceNumberGenerationTest extends TestCase
     public function test_import_csv_creates_invoices_with_official_format_and_no_draft_remains(): void
     {
         Storage::fake('local');
+        \App\Models\Pop::factory()->create(['code' => 'KTU']);
 
         $csvContent = implode("\n", [
             'ID Pelanggan,Nama,Nomor Telepon,Alamat,Tanggal Mulai Berlangganan,Jenis Tagihan,Paket,Status Layanan,Periode,Nominal Ditangguhkan,Status',
-            'SLX-GS-00101,Budi Import,081234567890,Jl. Melati No. 1,2026-01-01,Pascabayar,Paket 20 Mbps,ACTIVE,2026-07,150000,UNPAID',
-            'SLX-GS-00102,Siti Import,081234567891,Jl. Mawar No. 2,2026-01-01,Pascabayar,Paket 50 Mbps,ACTIVE,2026-07,350000,PAID',
+            'JCN-KTU-0101,Budi Import,081234567890,Jl. Melati No. 1,2026-01-01,Pascabayar,Paket 20 Mbps,ACTIVE,2026-07,150000,UNPAID',
+            'JCN-KTU-0102,Siti Import,081234567891,Jl. Mawar No. 2,2026-01-01,Pascabayar,Paket 50 Mbps,ACTIVE,2026-07,350000,PAID',
         ]);
 
         $path = 'imports/test_sample.csv';
@@ -81,6 +82,7 @@ class InvoiceNumberGenerationTest extends TestCase
             'total_rows'       => 2,
             'duplicate_policy' => 'update',
             'status'           => 'queued',
+            'user_id'          => $this->admin->id,
         ]);
 
         (new ProcessImport($batch))->handle();

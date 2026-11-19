@@ -4,9 +4,13 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "e2e": "playwright test",
+        "e2e:flow": "playwright test --grep @flow",
+        "e2e:report": "playwright show-report e2e/report"
     },
     "devDependencies": {
+        "@playwright/test": "^1.65.0",
         "@popperjs/core": "^2.11.8",
         "@tailwindcss/vite": "^4.0.0",
         "bootstrap": "^5.3.8",

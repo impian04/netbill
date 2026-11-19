@@ -39,7 +39,8 @@ class AuthController extends Controller
         // Always use SAME generic error — prevents user enumeration
         $fail = fn () => response()->json(['message' => self::ACTIVATION_ERROR], 422);
 
-        $customer = Customer::where('customer_code', strtoupper($data['customer_code']))->first();
+        $code = trim($data['customer_code']);
+        $customer = Customer::whereRaw('LOWER(customer_code) = ?', [strtolower($code)])->first();
         if (! $customer) return $fail();
 
         // Normalize phone and compare
@@ -84,7 +85,8 @@ class AuthController extends Controller
 
         $genericFail = response()->json(['message' => 'Kode pelanggan atau password salah.'], 401);
 
-        $customer = Customer::where('customer_code', strtoupper($data['customer_code']))->first();
+        $code = trim($data['customer_code']);
+        $customer = Customer::whereRaw('LOWER(customer_code) = ?', [strtolower($code)])->first();
         if (! $customer || ! $customer->password || ! Hash::check($data['password'], $customer->password)) {
             return $genericFail;
         }

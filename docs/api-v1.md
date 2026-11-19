@@ -78,7 +78,7 @@ Authorization: Bearer 1|xxxxxxxx
 **Request Body:**
 ```json
 {
-  "customer_code": "SLX-TG-00004",
+  "customer_code": "JCN-TG-0004",
   "phone": "08690160440",
   "activation_code": "ABCD-EFGH",
   "password": "Password123!",
@@ -92,7 +92,7 @@ Authorization: Bearer 1|xxxxxxxx
   "data": {
     "token": "1|xxxxxxxx",
     "profile": {
-      "customer_code": "SLX-TG-00004",
+      "customer_code": "JCN-TG-0004",
       "name": "Nathen Sporer",
       "address": "9946 Wiegand Square Suite 053\nHoegerview, NE 83664-1126",
       "phone": "628690160440",
@@ -113,7 +113,7 @@ Authorization: Bearer 1|xxxxxxxx
 **Request Body:**
 ```json
 {
-  "customer_code": "SLX-BT-00001",
+  "customer_code": "JCN-BT-0001",
   "password": "Password123!",
   "device_name": "Xiaomi Redmi Note 12"
 }
@@ -124,7 +124,7 @@ Authorization: Bearer 1|xxxxxxxx
   "data": {
     "token": "1|xxxxxxxx",
     "profile": {
-      "customer_code": "SLX-BT-00001",
+      "customer_code": "JCN-BT-0001",
       "name": "Dr. Melyssa Durgan",
       "address": "3537 Bradtke Junction Apt. 240\nWest Melynaberg, PA 38926",
       "phone": "628123456789",
@@ -146,7 +146,7 @@ Authorization: Bearer 1|xxxxxxxx
 ```json
 {
   "data": {
-    "customer_code": "SLX-BT-00001",
+    "customer_code": "JCN-BT-0001",
     "name": "Dr. Melyssa Durgan",
     "address": "3537 Bradtke Junction Apt. 240\nWest Melynaberg, PA 38926",
     "phone": "628123456789",
@@ -183,7 +183,7 @@ Authorization: Bearer 1|xxxxxxxx
         "status": "UNPAID",
         "paid_at": null,
         "payment_reference": null,
-        "customer_code": "SLX-BT-00001",
+        "customer_code": "JCN-BT-0001",
         "customer_name": "Dr. Melyssa Durgan",
         "address": "3537 Bradtke Junction Apt. 240\nWest Melynaberg, PA 38926",
         "package": "100 Mbps"
@@ -226,7 +226,7 @@ Authorization: Bearer 1|xxxxxxxx
       "status": "PAID",
       "paid_at": "2026-10-22T05:19:38+00:00",
       "payment_reference": null,
-      "customer_code": "SLX-BT-00001",
+      "customer_code": "JCN-BT-0001",
       "customer_name": "Dr. Melyssa Durgan",
       "address": "3537 Bradtke Junction Apt. 240\nWest Melynaberg, PA 38926",
       "package": "100 Mbps"
@@ -240,7 +240,7 @@ Authorization: Bearer 1|xxxxxxxx
       "status": "PAID",
       "paid_at": "2026-10-22T05:19:38+00:00",
       "payment_reference": null,
-      "customer_code": "SLX-BT-00001",
+      "customer_code": "JCN-BT-0001",
       "customer_name": "Dr. Melyssa Durgan",
       "address": "3537 Bradtke Junction Apt. 240\nWest Melynaberg, PA 38926",
       "package": "100 Mbps"
@@ -303,7 +303,7 @@ Authorization: Bearer 1|xxxxxxxx
     "status": "PAID",
     "paid_at": "2026-10-22T05:19:38+00:00",
     "payment_reference": null,
-    "customer_code": "SLX-BT-00001",
+    "customer_code": "JCN-BT-0001",
     "customer_name": "Dr. Melyssa Durgan",
     "address": "3537 Bradtke Junction Apt. 240\nWest Melynaberg, PA 38926",
     "package": "100 Mbps"

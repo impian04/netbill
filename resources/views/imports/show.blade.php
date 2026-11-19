@@ -10,14 +10,14 @@
 @endif
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('imports.index') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Kembali
-    </a>
+    <x-btn variant="neutral" href="{{ route('imports.index') }}"  >
+        Kembali
+    </x-btn>
     <div>
         <h1 class="h4 fw-bold mb-0">Status Import</h1>
         <p class="text-muted small mb-0 font-monospace">{{ $batch->original_name }}</p>
     </div>
-    <span class="badge bg-{{ $batch->statusColor() }} ms-1" style="font-size:.85rem;">
+    <span class="badge bg-{{ $batch->statusColor() }} ms-1">
         @if ($batch->isRunning())
             <span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem;"></span>
         @endif
@@ -31,7 +31,7 @@
     {{-- Progress card --}}
     <div class="col-lg-5">
         <div class="card h-100">
-            <div class="card-header"><i class="bi bi-bar-chart-steps me-2"></i>Progres</div>
+            <div class="card-header">Progres</div>
             <div class="card-body">
 
                 @if ($batch->total_rows)
@@ -57,7 +57,7 @@
                     </p>
                 @endif
 
-                <table class="table table-sm mb-0" style="font-size:.85rem;">
+                <table class="table table-sm mb-0">
                     <tr>
                         <td class="text-muted ps-0">File</td>
                         <td class="fw-medium">{{ $batch->original_name }}</td>
@@ -68,7 +68,7 @@
                             @if ($batch->duplicate_policy === 'skip')
                                 <span class="badge bg-secondary">Lewati</span>
                             @else
-                                <span class="badge bg-primary">Perbarui</span>
+                                <span class="badge bg-info">Perbarui</span>
                             @endif
                         </td>
                     </tr>
@@ -96,43 +96,43 @@
     {{-- Results counters --}}
     <div class="col-lg-7">
         <div class="card h-100">
-            <div class="card-header"><i class="bi bi-list-check me-2"></i>Ringkasan Hasil</div>
+            <div class="card-header">Ringkasan Hasil</div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-6">
                         <div class="p-3 rounded text-center" style="background:#dcfce7;">
-                            <div class="fw-bold" style="font-size:1.8rem;color:#166534;">
+                            <div class="fw-bold" style="color:#166534;">
                                 {{ number_format($batch->created_count) }}
                             </div>
                             <div class="small text-success">Data Baru Dibuat</div>
-                            <div class="text-muted" style="font-size:.7rem;">Pelanggan + tagihan baru</div>
+                            <div class="text-muted">Pelanggan + tagihan baru</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="p-3 rounded text-center" style="background:#dbeafe;">
-                            <div class="fw-bold" style="font-size:1.8rem;color:#1d4ed8;">
+                            <div class="fw-bold" style="color:#1d4ed8;">
                                 {{ number_format($batch->updated_count) }}
                             </div>
                             <div class="small text-primary">Diperbarui</div>
-                            <div class="text-muted" style="font-size:.7rem;">Duplikat yang ditimpa</div>
+                            <div class="text-muted">Duplikat yang ditimpa</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="p-3 rounded text-center" style="background:#f1f5f9;">
-                            <div class="fw-bold" style="font-size:1.8rem;color:#475569;">
+                            <div class="fw-bold" style="color:#475569;">
                                 {{ number_format($batch->skipped_count) }}
                             </div>
                             <div class="small text-secondary">Dilewati</div>
-                            <div class="text-muted" style="font-size:.7rem;">Duplikat yang dibiarkan</div>
+                            <div class="text-muted">Duplikat yang dibiarkan</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="p-3 rounded text-center" style="background:{{ $batch->error_count > 0 ? '#fee2e2' : '#f1f5f9' }};">
-                            <div class="fw-bold" style="font-size:1.8rem;color:{{ $batch->error_count > 0 ? '#991b1b' : '#475569' }};">
+                            <div class="fw-bold" style="color:{{ $batch->error_count > 0 ? '#991b1b' : '#475569' }};">
                                 {{ number_format($batch->error_count) }}
                             </div>
                             <div class="small" style="color:{{ $batch->error_count > 0 ? '#dc2626' : '#64748b' }};">Error</div>
-                            <div class="text-muted" style="font-size:.7rem;">Baris gagal diproses</div>
+                            <div class="text-muted">Baris gagal diproses</div>
                         </div>
                     </div>
                 </div>
@@ -147,7 +147,6 @@
     <div class="card">
         <div class="card-header d-flex align-items-center justify-content-between">
             <span>
-                <i class="bi bi-exclamation-triangle text-danger me-2"></i>
                 Detail Error ({{ count($batch->errors) }} baris)
             </span>
             <span class="text-muted small">Baris lain tetap diproses</span>
@@ -181,7 +180,6 @@
     </div>
 @elseif ($batch->status === 'done' && $batch->error_count === 0)
     <div class="alert alert-success d-flex gap-2">
-        <i class="bi bi-check-circle-fill"></i>
         <span>Import selesai tanpa error. Semua baris berhasil diproses.</span>
     </div>
 @endif

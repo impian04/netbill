@@ -37,8 +37,9 @@ class AdminJsonEndpointsTest extends TestCase
 
     public function test_datatables_search_as_array_and_as_string(): void
     {
-        Customer::factory()->create(['name' => 'Ahmad Dahlan', 'customer_code' => 'SLX-GS-00001']);
-        Customer::factory()->create(['name' => 'Budi Santoso', 'customer_code' => 'SLX-GS-00002']);
+        $pop = \App\Models\Pop::factory()->create(['code' => 'KTU']);
+        Customer::factory()->create(['name' => 'Ahmad Dahlan', 'customer_code' => 'JCN-KTU-0001', 'pop_id' => $pop->id]);
+        Customer::factory()->create(['name' => 'Budi Santoso', 'customer_code' => 'JCN-KTU-0002', 'pop_id' => $pop->id]);
 
         // 1. Search sebagai array DataTables {value, regex}
         $resArray = $this->actingAs($this->admin)->getJson('/customers?' . http_build_query([
@@ -187,9 +188,10 @@ class AdminJsonEndpointsTest extends TestCase
 
     public function test_store_customer_cannot_modify_activation_or_password_via_mass_assignment(): void
     {
+        $pop = \App\Models\Pop::factory()->create(['code' => 'KTU', 'last_customer_number' => 0]);
+
         $payload = [
-            'code_prefix'             => 'SLX-GS',
-            'customer_code'           => 'SLX-GS-99999',
+            'pop_id'                  => $pop->id,
             'name'                    => 'Budi Penyerang',
             'phone'                   => '6281234567899',
             'address'                 => 'Jl. Merdeka No. 10',
@@ -208,7 +210,8 @@ class AdminJsonEndpointsTest extends TestCase
         $response = $this->actingAs($this->admin)->postJson('/customers', $payload);
         $response->assertStatus(201);
 
-        $created = Customer::where('customer_code', 'SLX-GS-99999')->firstOrFail();
+        $created = Customer::where('name', 'Budi Penyerang')->firstOrFail();
+        $this->assertEquals('JCN-KTU-0001', $created->customer_code);
         $this->assertNull($created->password);
         $this->assertNull($created->activation_code_hash);
         $this->assertEquals(0, $created->activation_attempts);

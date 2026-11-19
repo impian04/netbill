@@ -5,32 +5,26 @@
 @section('content')
 
 {{-- ── Page Header ─────────────────────────────────────────────── --}}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Import Data Pelanggan &amp; Tagihan</h1>
-        <p class="page-subtitle">Unggah file spreadsheet (XLSX/CSV) untuk sinkronisasi tagihan bulanan</p>
-    </div>
-    <div class="d-flex gap-2 align-items-center">
-        <a href="{{ route('imports.template.xlsx') }}" id="btn-unduh-template-xlsx"
-           class="btn btn-sm btn-success d-flex align-items-center gap-2">
-            <i class="bi bi-file-earmark-excel"></i>Template Excel
-        </a>
-        <a href="{{ route('imports.template.csv') }}" id="btn-unduh-template-csv"
-           class="btn btn-sm btn-secondary d-flex align-items-center gap-2">
-            <i class="bi bi-filetype-csv"></i>Template CSV
-        </a>
-    </div>
-</div>
+<x-page-header title="Import Data Pelanggan &amp; Tagihan" subtitle="Unggah file spreadsheet (XLSX/CSV) untuk sinkronisasi tagihan bulanan">
+    <x-slot:actions>
+        <x-btn variant="approve" href="{{ route('imports.template.xlsx') }}" id="btn-unduh-template-xlsx"
+            >
+            Template Excel
+        </x-btn>
+        <x-btn variant="neutral" href="{{ route('imports.template.csv') }}" id="btn-unduh-template-csv">
+            Template CSV
+        </x-btn>
+    </x-slot:actions>
+</x-page-header>
 
 {{-- ── Kartu Unggah File ───────────────────────────────────────── --}}
 <!-- <div class="card mb-4" style="max-width: 680px;"> -->
 <div class="card mb-4">
     <div class="card-header">
-        <i class="bi bi-upload me-2 text-primary"></i>Unggah File Spreadsheet
+        Unggah File Spreadsheet
     </div>
     <div class="card-body">
-        <div class="alert alert-info d-flex gap-2 py-2 mb-3" style="font-size: .83rem;">
-            <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+        <div class="alert alert-info d-flex gap-2 py-2 mb-3">
             <div>
                 <strong>Disarankan menggunakan template Excel (.xlsx)</strong> agar format teks seperti Nomor Telepon dan ID Pelanggan tidak terpotong atau terformat menjadi notasi ilmiah. File .csv tetap didukung.
                 <br>Format: <strong>.xlsx</strong> (utama) atau <strong>.csv</strong> &middot; Maksimal: <strong>5 MB</strong>
@@ -42,7 +36,6 @@
 
         @if ($errors->any())
             <div class="alert alert-danger d-flex gap-2 py-2 mb-3">
-                <i class="bi bi-exclamation-triangle-fill"></i>
                 <span>{{ $errors->first() }}</span>
             </div>
         @endif
@@ -60,11 +53,11 @@
                 @error('file')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
-                <div class="form-text" style="font-size: 0.72rem;">Unduh template di atas untuk memastikan kesesuaian header kolom.</div>
+                <div class="form-text">Unduh template di atas untuk memastikan kesesuaian header kolom.</div>
             </div>
-            <button type="submit" id="btn-upload" class="btn btn-sm btn-primary px-3">
-                <i class="bi bi-eye me-1"></i>Pratinjau &amp; Lanjutkan
-            </button>
+            <x-btn type="submit" variant="primary"   id="btn-upload"  >
+                Pratinjau &amp; Lanjutkan
+            </x-btn>
         </form>
     </div>
 </div>
@@ -73,7 +66,7 @@
 @if ($batches->isNotEmpty())
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-clock-history me-2 text-primary"></i>Riwayat Batch Import Terakhir</span>
+        <span>Riwayat Batch Import Terakhir</span>
         <span class="text-muted small">{{ $batches->count() }} batch terbaru</span>
     </div>
     <div class="card-body p-3">
@@ -96,7 +89,6 @@
                     @foreach ($batches as $batch)
                         <tr>
                             <td class="small fw-semibold">
-                                <i class="bi bi-file-earmark-spreadsheet me-1 text-primary"></i>
                                 {{ $batch->original_name }}
                             </td>
                             <td>
@@ -112,7 +104,7 @@
                                 </span>
                             </td>
                             <td class="text-center"><span class="badge bg-success rounded-pill">{{ $batch->created_count }}</span></td>
-                            <td class="text-center"><span class="badge bg-primary rounded-pill">{{ $batch->updated_count }}</span></td>
+                            <td class="text-center"><span class="badge bg-info rounded-pill">{{ $batch->updated_count }}</span></td>
                             <td class="text-center"><span class="badge bg-secondary rounded-pill">{{ $batch->skipped_count }}</span></td>
                             <td class="text-center">
                                 @if ($batch->error_count > 0)
@@ -125,9 +117,8 @@
                                 {{ $batch->created_at->diffForHumans() }}
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('imports.show', $batch) }}" class="btn btn-sm btn-outline-secondary py-1 px-2" title="Lihat Status">
-                                    <i class="bi bi-eye"></i>
-                                </a>
+                                <x-btn variant="neutral" href="{{ route('imports.show', $batch) }}"   title="Lihat Status">
+                                    </x-btn>
                             </td>
                         </tr>
                     @endforeach
@@ -145,21 +136,9 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Inisialisasi DataTable client-side untuk riwayat batch import
     if (document.getElementById('import-history-table')) {
-        new window.DataTable('#import-history-table', {
+        window.initClientTable('#import-history-table', {
             pageLength: 10,
             searching: false,
-            language: {
-                lengthMenu: 'Tampilkan _MENU_ data',
-                info: 'Menampilkan _START_–_END_ dari _TOTAL_ data',
-                infoEmpty: 'Menampilkan 0 data',
-                zeroRecords: 'Tidak ada data import',
-                paginate: {
-                    first: 'Awal',
-                    last: 'Akhir',
-                    next: 'Berikutnya',
-                    previous: 'Sebelumnya',
-                }
-            }
         });
     }
 

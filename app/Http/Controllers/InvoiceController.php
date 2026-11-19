@@ -7,10 +7,11 @@ use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Pop;
+use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -32,28 +33,39 @@ class InvoiceController extends Controller
             return $this->dataTableResponse($request);
         }
 
-        $years     = Invoice::selectRaw('YEAR(period) as year')->distinct()->orderByDesc('year')->pluck('year');
-        $customers = Customer::select('id', 'customer_code', 'name')->orderBy('customer_code')->get();
+        $user = auth()->user();
+        $years = Invoice::visibleTo($user)->selectRaw('YEAR(period) as year')->distinct()->orderByDesc('year')->pluck('year');
+        $customers = Customer::visibleTo($user)->select('id', 'customer_code', 'name')->orderBy('customer_code')->get();
+        $pops = $user->isSuperAdmin() ? Pop::where('is_active', true)->orderBy('name')->get() : collect([$user->pop]);
 
-        return view('invoices.index', compact('years', 'customers'));
+        return view('invoices.index', compact('years', 'customers', 'pops'));
     }
 
     public function show(Request $request, Invoice $invoice): JsonResponse
     {
-        $invoice->load('customer:id,customer_code,name');
+        if (! auth()->user()->isSuperAdmin() && $invoice->customer->pop_id !== auth()->user()->pop_id) {
+            abort(404);
+        }
+
+        $invoice->load(['customer:id,customer_code,name,pop_id', 'customer.pop:id,code,name']);
         return response()->json($invoice);
     }
 
     public function store(StoreInvoiceRequest $request, ?Customer $customer = null): JsonResponse|RedirectResponse
     {
+        $user = auth()->user();
+        $targetCustomer = $customer && $customer->exists ? $customer : Customer::findOrFail($request->input('customer_id'));
+
+        if (! $user->isSuperAdmin() && $targetCustomer->pop_id !== $user->pop_id) {
+            abort(404);
+        }
+
         $data = $request->validated();
 
-        $invoice = DB::transaction(function () use ($data, $customer) {
-            if ($customer && $customer->exists) {
-                return $customer->invoices()->create($data);
-            }
-
-            return Invoice::create($data);
+        $invoice = DB::transaction(function () use ($data, $targetCustomer) {
+            $inv = $targetCustomer->invoices()->create($data);
+            ActivityLogger::log('invoice.create', "Membuat tagihan {$inv->invoice_number} untuk {$targetCustomer->customer_code}", $inv, $targetCustomer->pop_id);
+            return $inv;
         });
 
         if ($request->expectsJson()) {
@@ -69,7 +81,21 @@ class InvoiceController extends Controller
 
     public function update(UpdateInvoiceRequest $request, Invoice $invoice): JsonResponse|RedirectResponse
     {
+        if (! auth()->user()->isSuperAdmin() && $invoice->customer->pop_id !== auth()->user()->pop_id) {
+            abort(404);
+        }
+
+        $oldStatus = $invoice->status;
         $invoice->update($request->validated());
+
+        if ($oldStatus !== $invoice->status) {
+            ActivityLogger::log(
+                'invoice.update_status',
+                "Mengubah status tagihan {$invoice->invoice_number} dari {$oldStatus} ke {$invoice->status}",
+                $invoice,
+                $invoice->customer->pop_id
+            );
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -84,8 +110,16 @@ class InvoiceController extends Controller
 
     public function destroy(Request $request, Invoice $invoice): JsonResponse|RedirectResponse
     {
+        if (! auth()->user()->isSuperAdmin() && $invoice->customer->pop_id !== auth()->user()->pop_id) {
+            abort(404);
+        }
+
         $customerId = $invoice->customer_id;
+        $popId      = $invoice->customer->pop_id;
+        $number     = $invoice->invoice_number;
+
         $invoice->delete();
+        ActivityLogger::log('invoice.delete', "Menghapus tagihan {$number}", null, $popId);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -115,6 +149,7 @@ class InvoiceController extends Controller
 
         $filters = [
             'search'      => $search,
+            'pop_id'      => $request->input('pop_id'),
             'customer_id' => $request->input('customer_id'),
             'period'      => $request->input('period'),
             'year'        => $request->input('year'),
@@ -123,7 +158,8 @@ class InvoiceController extends Controller
             'direction'   => $orderDir,
         ];
 
-        $recordsTotal = Cache::remember('dt_invoices_total_count', 60, fn () => Invoice::count());
+        $user = auth()->user();
+        $recordsTotal = Invoice::visibleTo($user)->count();
 
         $query = InvoiceFilter::apply(
             Invoice::query()
@@ -131,7 +167,7 @@ class InvoiceController extends Controller
                     'id', 'customer_id', 'invoice_number', 'period',
                     'due_date', 'deferred_amount', 'status', 'paid_at', 'payment_reference',
                 ])
-                ->with('customer:id,customer_code,name'),
+                ->with(['customer:id,customer_code,name,pop_id', 'customer.pop:id,code,name']),
             $filters
         );
 
@@ -145,6 +181,7 @@ class InvoiceController extends Controller
                 'customer_id'       => $inv->customer_id,
                 'customer_code'     => $inv->customer?->customer_code,
                 'customer_name'     => $inv->customer?->name,
+                'pop_code'          => $inv->customer?->pop?->code,
                 'invoice_number'    => $inv->invoice_number,
                 'period'            => $inv->period?->format('Y-m'),
                 'due_date'          => $inv->due_date?->format('Y-m-d'),

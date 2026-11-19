@@ -15,7 +15,7 @@
 <!-- <div class="card" style="max-width: 600px;"> -->
 <div class="card">
     <div class="card-header">
-        <i class="bi bi-whatsapp me-2 text-success"></i>Nomor WhatsApp Kontak Dukungan
+        Nomor WhatsApp Kontak Dukungan
     </div>
     <div class="card-body">
         <form method="POST" action="{{ route('settings.noc.update') }}" id="form-noc" novalidate>
@@ -45,14 +45,14 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="form-text" style="font-size: 0.72rem;">Format: 62xxxxxxxxxx (kosongkan jika tidak ingin ditampilkan).</div>
+                    <div class="form-text">Format: 62xxxxxxxxxx (kosongkan jika tidak ingin ditampilkan).</div>
                 </div>
             @endforeach
 
             <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                <button type="submit" class="btn btn-sm btn-primary px-3" id="btn-save-noc">
-                    <i class="bi bi-save me-1"></i>Simpan Perubahan
-                </button>
+                <x-btn type="submit" variant="primary"     id="btn-save-noc">
+                    Simpan Perubahan
+                </x-btn>
             </div>
         </form>
     </div>

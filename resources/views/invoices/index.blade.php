@@ -5,83 +5,85 @@
 @section('content')
 
 {{-- ── Page Header ─────────────────────────────────────────────── --}}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Daftar Tagihan</h1>
-        <p class="page-subtitle">Pantau seluruh tagihan pelanggan, status pelunasan, dan jatuh tempo</p>
-    </div>
-    <div class="d-flex gap-2">
-        <a href="{{ route('export.invoices') }}" class="btn btn-sm btn-success" id="btn-export-all-invoices">
-            <i class="bi bi-download me-1"></i>Ekspor XLSX
-        </a>
-        <button type="button" class="btn btn-sm btn-primary" id="btn-open-create-invoice">
-            <i class="bi bi-plus-lg me-1"></i>Tambah Tagihan
-        </button>
-    </div>
-</div>
+<x-page-header title="Daftar Tagihan" subtitle="Pantau seluruh tagihan pelanggan, status pelunasan, dan jatuh tempo">
+    <x-slot:actions>
+        <x-btn variant="export" href="{{ route('export.invoices') }}" id="btn-export-all-invoices">
+            Ekspor XLSX
+        </x-btn>
+        <x-btn variant="primary" id="btn-open-create-invoice">
+            Tambah Tagihan
+        </x-btn>
+    </x-slot:actions>
+</x-page-header>
 
 {{-- ── Kartu Filter (row g-2) ──────────────────────────────────── --}}
-<div class="card mb-4">
-    <div class="card-body py-3">
-        <form id="filter-invoices-form" class="row g-2 align-items-center">
-            <div class="col-12 col-lg-3">
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                    <input type="search" id="filter-inv-search" name="search" class="form-control form-control-sm"
-                           placeholder="Cari nomor, kode, atau nama...">
-                </div>
+<x-filter-card>
+    <form id="filter-invoices-form" class="row g-2 align-items-center">
+        <div class="col-12 {{ auth()->user()->isSuperAdmin() ? 'col-lg-3' : 'col-lg-3' }}">
+            <div class="input-group input-group-sm">
+                <input type="search" id="filter-inv-search" name="search" class="form-control form-control-sm"
+                       placeholder="Cari nomor, kode, atau nama...">
             </div>
+        </div>
 
+        @if(auth()->user()->isSuperAdmin())
             <div class="col-6 col-lg-2">
-                <select name="status" id="filter-inv-status" class="form-select form-select-sm">
-                    <option value="">Semua Status</option>
-                    <option value="PAID">Lunas</option>
-                    <option value="UNPAID">Belum Bayar</option>
-                </select>
-            </div>
-
-            <div class="col-6 col-lg-2">
-                <input type="month" name="period" id="filter-inv-period" class="form-control form-control-sm">
-            </div>
-
-            <div class="col-6 col-lg-2">
-                <select name="year" id="filter-inv-year" class="form-select form-select-sm">
-                    <option value="">Semua Tahun</option>
-                    @foreach ($years ?? [] as $y)
-                        <option value="{{ $y }}">{{ $y }}</option>
+                <select name="pop_id" id="filter-inv-pop" class="form-select form-select-sm">
+                    <option value="">Semua POP</option>
+                    @foreach ($pops as $pop)
+                        <option value="{{ $pop->id }}">POP {{ $pop->code }}</option>
                     @endforeach
                 </select>
             </div>
+        @endif
 
-            <div class="col-6 col-lg-3 text-end">
-                <button type="button" id="btn-reset-invoices-filter" class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+        <div class="col-6 {{ auth()->user()->isSuperAdmin() ? 'col-lg-2' : 'col-lg-2' }}">
+            <select name="status" id="filter-inv-status" class="form-select form-select-sm">
+                <option value="">Semua Status</option>
+                <option value="PAID">Lunas</option>
+                <option value="UNPAID">Belum Bayar</option>
+            </select>
+        </div>
+
+        <div class="col-6 {{ auth()->user()->isSuperAdmin() ? 'col-lg-2' : 'col-lg-2' }}">
+            <input type="month" name="period" id="filter-inv-period" class="form-control form-control-sm">
+        </div>
+
+        <div class="col-6 {{ auth()->user()->isSuperAdmin() ? 'col-lg-2' : 'col-lg-2' }}">
+            <select name="year" id="filter-inv-year" class="form-select form-select-sm">
+                <option value="">Semua Tahun</option>
+                @foreach ($years ?? [] as $y)
+                    <option value="{{ $y }}">{{ $y }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="col-6 {{ auth()->user()->isSuperAdmin() ? 'col-lg-1' : 'col-lg-3' }} text-end ms-lg-auto">
+            <x-btn variant="neutral" id="btn-reset-invoices-filter" class="w-100">
+                Reset
+            </x-btn>
+        </div>
+    </form>
+</x-filter-card>
 
 {{-- ── Kartu Tabel DataTables Server-Side ───────────────────────── --}}
-<div class="card">
-    <div class="card-body p-3">
-        <table id="global-invoices-table" class="table table-hover align-middle mb-0 w-100">
-            <thead>
-                <tr>
-                    <th>No. Tagihan</th>
-                    <th>Pelanggan</th>
-                    <th>Periode</th>
-                    <th>Jatuh Tempo</th>
-                    <th class="text-end">Nominal Tagihan</th>
-                    <th>Status</th>
-                    <th class="d-none d-lg-table-cell">Waktu Bayar</th>
-                    <th class="text-end" style="width: 80px;">Aksi</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
+<x-table-card>
+    <table id="global-invoices-table" class="table table-hover align-middle mb-0 w-100">
+        <thead>
+            <tr>
+                <th>No. Tagihan</th>
+                <th>Pelanggan</th>
+                <th>Periode</th>
+                <th>Jatuh Tempo</th>
+                <th class="text-end">Nominal Tagihan</th>
+                <th>Status</th>
+                <th class="d-none d-lg-table-cell">Waktu Bayar</th>
+                <th class="text-end" style="width: 80px;">Aksi</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</x-table-card>
 
 {{-- ── Offcanvas Form Tagihan (Tambah & Ubah) ───────────────────── --}}
 @include('invoices.partials.offcanvas', [
@@ -100,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput: '#filter-inv-search',
         resetButton: '#btn-reset-invoices-filter',
         pageLength: 15,
-        order: [[2, 'desc']], // default period desc
+        order: [[2, 'desc']],
         columns: [
             {
                 data: 'invoice_number',
@@ -148,10 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: 'status',
                 name: 'status',
                 render: function (data) {
-                    if (data === 'PAID') {
-                        return '<span class="badge badge-paid px-2 py-1"><i class="bi bi-check-circle me-1"></i>Lunas</span>';
-                    }
-                    return '<span class="badge badge-unpaid px-2 py-1"><i class="bi bi-clock me-1"></i>Belum Bayar</span>';
+                    return window.statusBadge('invoice_status', data);
                 }
             },
             {
@@ -168,15 +167,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 className: 'text-end text-nowrap',
                 render: function (data, type, row) {
                     return `
-                        <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-secondary py-1 px-2 btn-edit-invoice"
-                                    data-id="${row.id}" data-url="${row.urls.show}" title="Ubah Tagihan">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-danger py-1 px-2 btn-delete-invoice"
-                                    data-url="${row.urls.delete}" data-period="${window.escapeHtml(row.period)}" title="Hapus Tagihan">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                        <div class="d-flex justify-content-end gap-1">
+                            ${window.btnIconHtml('edit', { class: 'btn-edit-invoice', 'data-id': row.id, 'data-url': row.urls.show, title: 'Ubah Tagihan' })}
+                            ${window.btnIconHtml('delete', { class: 'btn-delete-invoice', 'data-url': row.urls.delete, 'data-period': window.escapeHtml(row.period), title: 'Hapus Tagihan' })}
                         </div>
                     `;
                 }

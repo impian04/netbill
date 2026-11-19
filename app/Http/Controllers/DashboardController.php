@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Filters\CustomerFilter;
 use App\Filters\InvoiceFilter;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Pop;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -12,12 +14,13 @@ class DashboardController extends Controller
 {
     public function index(Request $request): View
     {
-        $filters = $request->only(['period', 'year']);
+        $user = auth()->user();
+        $filters = $request->only(['period', 'year', 'pop_id']);
 
-        // 1. Total customers (unfiltered — selalu tampil semua)
-        $totalCustomers = Customer::count();
+        // 1. Total customers (scoped to user's pop or filtered pop)
+        $totalCustomers = CustomerFilter::apply(Customer::query(), $filters)->count();
 
-        // 2. Aggregate stats — reuse InvoiceFilter untuk konsistensi dengan Fase 2
+        // 2. Aggregate stats — reuse InvoiceFilter untuk konsistensi
         $stats = InvoiceFilter::apply(Invoice::query(), $filters)
             ->selectRaw("
                 COUNT(*) as total_invoices,
@@ -43,19 +46,25 @@ class DashboardController extends Controller
             ->sortBy('period')
             ->values();
 
-        // 4. Tagihan UNPAID terlama (10 teratas, dengan eager load kolom minimum)
-        $oldestUnpaid = Invoice::with(['customer:id,name,customer_code,package'])
-            ->where('status', 'UNPAID')
+        // 4. Tagihan UNPAID terlama (10 teratas)
+        $oldestUnpaid = InvoiceFilter::apply(Invoice::query(), array_merge($filters, ['status' => 'UNPAID']))
+            ->with(['customer:id,name,customer_code,package,pop_id', 'customer.pop:id,code,name'])
             ->orderBy('period')
             ->limit(10)
             ->get(['id', 'customer_id', 'period', 'deferred_amount', 'status']);
 
         // 5. Tahun tersedia untuk dropdown filter
-        $years = Invoice::query()
+        $years = InvoiceFilter::apply(Invoice::query(), $filters)
+            ->reorder()
             ->selectRaw('YEAR(period) as year')
             ->distinct()
             ->orderByDesc('year')
             ->pluck('year');
+
+        // 6. POPs untuk filter super_admin
+        $pops = $user->isSuperAdmin()
+            ? Pop::where('is_active', true)->orderBy('name')->get()
+            : collect([$user->pop]);
 
         return view('dashboard.index', compact(
             'totalCustomers',
@@ -63,7 +72,8 @@ class DashboardController extends Controller
             'periodSummary',
             'oldestUnpaid',
             'filters',
-            'years'
+            'years',
+            'pops'
         ));
     }
 }

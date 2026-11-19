@@ -18,29 +18,30 @@
 @endphp
 
 {{-- ── Page header ─────────────────────────────────────────────── --}}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Dashboard</h1>
-        <p class="page-subtitle">Ringkasan status tagihan dan performa operasional NetBill</p>
-    </div>
-    <!-- <div class="d-flex gap-2">
-        <a href="{{ route('customers.index') }}" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-people me-1"></i>Pelanggan
-        </a>
-        <a href="{{ route('invoices.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-receipt me-1"></i>Tagihan
-        </a>
-    </div> -->
-</div>
+<x-page-header title="Dashboard" subtitle="Ringkasan status tagihan dan performa operasional NetBill" />
 
 {{-- ── Filter bar ───────────────────────────────────────────────── --}}
-<div class="card mb-4">
-    <div class="card-body py-2">
+<x-filter-card mode="apply">
+    <div class="py-2">
         <form id="dashboard-filter-form" method="GET" action="{{ route('dashboard') }}">
             <div class="row g-2 align-items-center">
                 <div class="col-12 col-sm-auto">
                     <label class="form-label small fw-semibold text-muted mb-0 me-2">Periode:</label>
                 </div>
+                @if(auth()->user()->isSuperAdmin())
+                    <div class="col-12 col-sm-auto" style="min-width:160px;">
+                        <select name="pop_id" id="dash-pop" class="form-select form-select-sm">
+                            <option value="">Semua POP</option>
+                            @foreach ($pops as $p)
+                                <option value="{{ $p->id }}" @selected(($filters['pop_id'] ?? '') == $p->id)>POP {{ $p->code }} - {{ $p->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @else
+                    <div class="col-12 col-sm-auto">
+                        <span class="badge bg-light text-dark border py-2 px-3 small">POP {{ auth()->user()->pop?->code }} - {{ auth()->user()->pop?->name }}</span>
+                    </div>
+                @endif
                 <div class="col-6 col-sm-auto">
                     <input type="month" name="period" id="dash-period" class="form-control form-control-sm"
                            value="{{ $filters['period'] ?? '' }}">
@@ -54,78 +55,42 @@
                     </select>
                 </div>
                 <div class="col-12 col-sm-auto d-flex gap-2 ms-sm-auto">
-                    <button type="submit" id="btn-dash-filter" class="btn btn-primary btn-sm px-3">
-                        <i class="bi bi-funnel me-1"></i>Terapkan
-                    </button>
-                    <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm px-3">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-                    </a>
+                    <x-btn type="submit" variant="primary" id="btn-dash-filter">Filter</x-btn>
+                    <x-btn variant="neutral" href="{{ route('dashboard') }}" id="btn-dash-reset">Reset</x-btn>
                 </div>
             </div>
         </form>
     </div>
-</div>
+</x-filter-card>
 
 {{-- ── Stat cards (grid row g-3: col-12 col-sm-6 col-xl-3, h-100) ── --}}
 <div class="row g-3 mb-4">
     {{-- Total Pelanggan --}}
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card" style="border-left:3px solid #2563eb;">
-            <div class="stat-icon" style="background:#dbeafe;">
-                <i class="bi bi-people-fill text-primary"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="stat-value">{{ number_format($totalCustomers) }}</div>
-                <div class="stat-label">Total Pelanggan</div>
-                <div class="stat-help">Seluruh pelanggan terdaftar di sistem</div>
-            </div>
-        </div>
+        <x-stat-card border-color="#2563eb" icon-bg="#dbeafe" icon="bi bi-people-fill text-primary" :value="number_format($totalCustomers)" title="Total Pelanggan" help="Seluruh pelanggan terdaftar di sistem" />
     </div>
 
     {{-- Total Tagihan --}}
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card" style="border-left:3px solid #9333ea;" >
-            <div class="stat-icon" style="background:#f3e8ff;">
-                <i class="bi bi-receipt" style="color:#9333ea;"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="stat-value">{{ number_format($totalInvoices) }}</div>
-                <div class="stat-label">Total Tagihan</div>
-                <div class="stat-help">Jumlah invoice pada filter aktif</div>
-            </div>
-        </div>
+        <x-stat-card border-color="#9333ea" icon-bg="#f3e8ff" icon="bi bi-receipt" icon-color="#9333ea" :value="number_format($totalInvoices)" title="Total Tagihan" help="Jumlah invoice pada filter aktif" />
     </div>
 
     {{-- Tagihan Lunas --}}
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card" style="border-left:3px solid #16a34a;">
-            <div class="stat-icon" style="background:#dcfce7;">
-                <i class="bi bi-check-circle-fill text-success"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="stat-value text-success">{{ number_format($paidCount) }}</div>
-                <div class="stat-label">Tagihan Lunas</div>
-                <div class="stat-help">
-                    <span class="text-success fw-semibold">{{ rupiah($paidAmount) }}</span> ditangguhkan
-                </div>
-            </div>
-        </div>
+        <x-stat-card border-color="#16a34a" icon-bg="#dcfce7" icon="bi bi-check-circle-fill text-success" color="success" :value="number_format($paidCount)" title="Tagihan Lunas">
+            <x-slot:help>
+                <span class="text-success fw-semibold">{{ rupiah($paidAmount) }}</span> ditangguhkan
+            </x-slot:help>
+        </x-stat-card>
     </div>
 
     {{-- Tagihan Belum Bayar --}}
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card" style="border-left:3px solid #dc2626;">
-            <div class="stat-icon" style="background:#fee2e2;">
-                <i class="bi bi-clock-fill text-danger"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="stat-value text-danger">{{ number_format($unpaidCount) }}</div>
-                <div class="stat-label">Tagihan Belum Bayar</div>
-                <div class="stat-help">
-                    <span class="text-danger fw-semibold">{{ rupiah($unpaidAmount) }}</span> tertunggak
-                </div>
-            </div>
-        </div>
+        <x-stat-card border-color="#dc2626" icon-bg="#fee2e2" icon="bi bi-clock-fill text-danger" color="danger" :value="number_format($unpaidCount)" title="Tagihan Belum Bayar">
+            <x-slot:help>
+                <span class="text-danger fw-semibold">{{ rupiah($unpaidAmount) }}</span> tertunggak
+            </x-slot:help>
+        </x-stat-card>
     </div>
 </div>
 
@@ -138,18 +103,17 @@
             <div class="col-12">
                 <div class="card h-100">
                     <div class="card-header d-flex align-items-center justify-content-between">
-                        <span><i class="bi bi-bar-chart me-2 text-primary"></i>Tren Tagihan per Periode</span>
+                        <span>Tren Tagihan per Periode</span>
                         <span class="text-muted small">{{ $periodSummary->count() > 0 ? $periodSummary->count() . ' periode terakhir' : '—' }}</span>
                     </div>
                     <div class="card-body py-3">
                         @if ($periodSummary->isNotEmpty())
                             <canvas id="period-bar" height="170"></canvas>
-                            <p class="text-muted text-center mt-2 mb-0" style="font-size:.72rem;">
+                            <p class="text-muted text-center mt-2 mb-0">
                                 Perbandingan tagihan lunas (hijau) vs belum bayar (merah) per bulan.
                             </p>
                         @else
                             <div class="text-center py-4 text-muted">
-                                <i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="small mb-0">Tidak ada data periode</p>
                             </div>
                         @endif
@@ -161,7 +125,7 @@
             <div class="col-12">
                 <div class="card h-100">
                     <div class="card-header d-flex align-items-center justify-content-between">
-                        <span><i class="bi bi-pie-chart me-2 text-primary"></i>Rasio Pelunasan Tagihan</span>
+                        <span>Rasio Pelunasan Tagihan</span>
                         <span class="badge bg-light text-dark border">{{ $paidPct }}% Lunas</span>
                     </div>
                     <div class="card-body d-flex flex-column flex-sm-row align-items-center justify-content-around py-3">
@@ -169,8 +133,8 @@
                             <div style="position:relative;width:150px;height:150px;">
                                 <canvas id="status-doughnut" width="150" height="150"></canvas>
                                 <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
-                                    <span class="fw-bold fs-4 text-dark">{{ $paidPct }}%</span>
-                                    <span class="text-muted" style="font-size:.7rem;">Lunas</span>
+                                    <span class="fw-bold stat-value text-dark">{{ $paidPct }}%</span>
+                                    <span class="text-muted">Lunas</span>
                                 </div>
                             </div>
                             <div class="mt-3 mt-sm-0">
@@ -182,13 +146,12 @@
                                     <span style="width:12px;height:12px;background:#dc2626;border-radius:3px;display:inline-block;"></span>
                                     <span class="small text-muted">Belum Bayar: <strong>{{ number_format($unpaidCount) }}</strong> invoice</span>
                                 </div>
-                                <div class="text-muted small" style="font-size:0.75rem;">
+                                <div class="text-muted small">
                                     Total nominal tertunggak: <span class="text-danger fw-semibold">{{ rupiah($unpaidAmount) }}</span>
                                 </div>
                             </div>
                         @else
                             <div class="text-center py-3 text-muted">
-                                <i class="bi bi-pie-chart fs-1 d-block mb-1 opacity-25"></i>
                                 <span class="small">Tidak ada data invoice</span>
                             </div>
                         @endif
@@ -202,13 +165,12 @@
     <div class="col-12 col-lg-4">
         <div class="card h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Perlu Perhatian</span>
-                <span class="badge bg-danger text-white" style="font-size:.7rem;">Tunggakan Terlama</span>
+                <span>Perlu Perhatian</span>
+                <span class="badge bg-danger">Tunggakan Terlama</span>
             </div>
             <div class="card-body p-0">
                 @if ($oldestUnpaid->isEmpty())
                     <div class="text-center py-5 text-muted">
-                        <i class="bi bi-check-circle fs-1 d-block mb-2 text-success opacity-50"></i>
                         <p class="fw-semibold mb-0 small">Semua tagihan sudah lunas!</p>
                     </div>
                 @else
@@ -230,15 +192,14 @@
                                         <span class="badge bg-light text-muted border">Bulan ini</span>
                                     @endif
                                 </div>
-                                <div class="d-flex align-items-center justify-content-between text-muted" style="font-size:0.75rem;">
+                                <div class="d-flex align-items-center justify-content-between text-muted">
                                     <span class="font-monospace text-primary">{{ $inv->customer->customer_code }}</span>
                                     <span class="fw-semibold text-danger">{{ rupiah($inv->deferred_amount) }}</span>
                                 </div>
-                                <div class="d-flex align-items-center justify-content-between mt-1 text-muted" style="font-size:0.72rem;">
+                                <div class="d-flex align-items-center justify-content-between mt-1 text-muted">
                                     <span>Periode: {{ bulan_indo($inv->period) }}</span>
                                     <a href="{{ route('customers.show', $inv->customer) }}" class="text-decoration-none">
-                                        Rincian <i class="bi bi-chevron-right"></i>
-                                    </a>
+                                        Rincian </a>
                                 </div>
                             </div>
                         @endforeach
@@ -246,8 +207,8 @@
                 @endif
             </div>
             <div class="card-footer bg-white border-top py-2">
-                <span class="text-muted" style="font-size:.72rem;">
-                    <i class="bi bi-info-circle me-1"></i>Diurutkan berdasarkan tanggal tagihan terlama yang belum lunas.
+                <span class="text-muted">
+                    Diurutkan berdasarkan tanggal tagihan terlama yang belum lunas.
                 </span>
             </div>
         </div>

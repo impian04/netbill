@@ -1,16 +1,6 @@
-<div class="offcanvas offcanvas-end crud-offcanvas" tabindex="-1" id="offcanvas-invoice" data-bs-scroll="true" data-bs-backdrop="true" aria-labelledby="offcanvasInvoiceTitle">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="offcanvasInvoiceTitle">Tambah Tagihan</h5>
-        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
-    </div>
-
-    <form id="form-invoice" novalidate>
-        @csrf
-        <input type="hidden" name="_method" value="POST">
-
-        <div class="offcanvas-body">
-            <div class="row g-3">
-                {{-- Pelanggan (pilihan untuk daftar tagihan global atau info jika dari detail pelanggan) --}}
+<x-offcanvas-form id="offcanvas-invoice" formId="form-invoice" title="Tambah Tagihan" titleId="offcanvasInvoiceTitle" submitId="btn-submit-invoice" submitText="Simpan">
+    <div class="row g-3">
+        {{-- Pelanggan (pilihan untuk daftar tagihan global atau info jika dari detail pelanggan) --}}
                 <div class="col-12" id="invoice-customer-field">
                     <label for="inv_customer_id" class="form-label small fw-semibold">
                         Pelanggan <span class="text-danger">*</span>
@@ -55,13 +45,13 @@
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="status" id="inv_status_unpaid" value="UNPAID" checked>
                             <label class="form-check-label small" for="inv_status_unpaid">
-                                <span class="badge badge-unpaid px-2 py-1">Belum Bayar</span>
+                                <x-status-badge type="invoice_status" status="UNPAID" />
                             </label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="status" id="inv_status_paid" value="PAID">
                             <label class="form-check-label small" for="inv_status_paid">
-                                <span class="badge badge-paid px-2 py-1">Lunas</span>
+                                <x-status-badge type="invoice_status" status="PAID" />
                             </label>
                         </div>
                     </div>
@@ -75,7 +65,7 @@
                     </label>
                     <input type="date" id="inv_due_date" name="due_date"
                            class="form-control form-control-sm">
-                    <div class="form-text" style="font-size:0.72rem;">Opsional (YYYY-MM-DD).</div>
+                    <div class="form-text">Opsional (YYYY-MM-DD).</div>
                     <div class="invalid-feedback"></div>
                 </div>
 
@@ -87,17 +77,8 @@
                     <input type="text" id="inv_payment_reference" name="payment_reference"
                            class="form-control form-control-sm"
                            placeholder="No. transfer/bukti" maxlength="100">
-                    <div class="form-text" style="font-size:0.72rem;">Opsional jika lunas.</div>
+                    <div class="form-text">Opsional jika lunas.</div>
                     <div class="invalid-feedback"></div>
                 </div>
-            </div>
-        </div>
-
-        <div class="offcanvas-footer">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="offcanvas">Batal</button>
-            <button type="submit" class="btn btn-sm btn-primary px-3" id="btn-submit-invoice">
-                <i class="bi bi-save me-1"></i>Simpan
-            </button>
-        </div>
-    </form>
-</div>
+    </div>
+</x-offcanvas-form>

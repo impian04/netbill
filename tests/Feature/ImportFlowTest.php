@@ -21,6 +21,7 @@ class ImportFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \App\Models\Pop::factory()->create(['code' => 'KTU']);
         $this->admin = User::factory()->create();
     }
 
@@ -32,7 +33,7 @@ class ImportFlowTest extends TestCase
             'Periode', 'Nominal Ditangguhkan', 'Status', 'Jatuh Tempo',
         ];
         $row1 = [
-            'SLX-GS-00201', 'Ahmad Test', '081234567890', 'Jl. Kenanga No. 1',
+            'JCN-KTU-0201', 'Ahmad Test', '081234567890', 'Jl. Kenanga No. 1',
             '2026-01-01', 'Pascabayar', 'Paket 20 Mbps', 'ACTIVE',
             '2026-10', '150000', 'UNPAID', '2026-10-25',
         ];
@@ -63,7 +64,7 @@ class ImportFlowTest extends TestCase
         $previewResponse = $this->actingAs($this->admin)->get($targetUrl);
         $previewResponse->assertStatus(200);
         $previewResponse->assertSee('Ahmad Test');
-        $previewResponse->assertSee('SLX-GS-00201');
+        $previewResponse->assertSee('JCN-KTU-0201');
 
         // Refresh preview page (PRG check)
         $refreshResponse = $this->actingAs($this->admin)->get($targetUrl);
@@ -171,7 +172,7 @@ class ImportFlowTest extends TestCase
         $sheet->fromArray($headers, null, 'A1');
 
         // Row 2: phone text '081234567890', date text '2023-01-15'
-        $sheet->setCellValueExplicit('A2', 'SLX-XLSX-001', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('A2', 'JCN-KTU-0001', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         $sheet->setCellValue('B2', 'Pelanggan Teks');
         $sheet->setCellValueExplicit('C2', '081234567890', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         $sheet->setCellValue('D2', 'Jl. Mawar No. 1');
@@ -185,7 +186,7 @@ class ImportFlowTest extends TestCase
         $sheet->setCellValueExplicit('L2', '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
 
         // Row 3: phone numeric 13 digits 6281234567891, date Excel serial 44941 (2023-01-15)
-        $sheet->setCellValueExplicit('A3', 'SLX-XLSX-002', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('A3', 'JCN-KTU-0002', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         $sheet->setCellValue('B3', 'Pelanggan Angka 13 Digit');
         $sheet->setCellValue('C3', 6281234567891);
         $sheet->setCellValue('D3', 'Jl. Melati No. 2');
@@ -200,7 +201,7 @@ class ImportFlowTest extends TestCase
         $sheet->setCellValueExplicit('L3', '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
 
         // Row 4: phone without 0 (81234567892), date text DD/MM/YYYY '15/01/2023'
-        $sheet->setCellValueExplicit('A4', 'SLX-XLSX-003', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('A4', 'JCN-KTU-0003', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         $sheet->setCellValue('B4', 'Pelanggan Tanpa Nol');
         $sheet->setCellValue('C4', 81234567892);
         $sheet->setCellValue('D4', 'Jl. Anggrek No. 3');
@@ -249,19 +250,19 @@ class ImportFlowTest extends TestCase
         $this->assertEquals(0, $batch->error_count);
 
         // Verify Customer 1 (phone text 081234567890 -> 6281234567890, date 2023-01-15)
-        $c1 = Customer::where('customer_code', 'SLX-XLSX-001')->first();
+        $c1 = Customer::where('customer_code', 'JCN-KTU-0001')->first();
         $this->assertNotNull($c1);
         $this->assertEquals('6281234567890', $c1->phone);
         $this->assertEquals('2023-01-15', $c1->subscribed_at->format('Y-m-d'));
 
         // Verify Customer 2 (phone numeric 13 digits 6281234567891, Excel date serial -> 2023-01-15)
-        $c2 = Customer::where('customer_code', 'SLX-XLSX-002')->first();
+        $c2 = Customer::where('customer_code', 'JCN-KTU-0002')->first();
         $this->assertNotNull($c2);
         $this->assertEquals('6281234567891', $c2->phone);
         $this->assertEquals('2023-01-15', $c2->subscribed_at->format('Y-m-d'));
 
         // Verify Customer 3 (phone 81234567892 without 0 -> 6281234567892, DD/MM/YYYY -> 2023-01-15)
-        $c3 = Customer::where('customer_code', 'SLX-XLSX-003')->first();
+        $c3 = Customer::where('customer_code', 'JCN-KTU-0003')->first();
         $this->assertNotNull($c3);
         $this->assertEquals('6281234567892', $c3->phone);
         $this->assertEquals('2023-01-15', $c3->subscribed_at->format('Y-m-d'));
@@ -275,7 +276,7 @@ class ImportFlowTest extends TestCase
             'Periode', 'Nominal Ditangguhkan', 'Status', 'Jatuh Tempo',
         ];
         $row = [
-            'SLX-CSV-SCI', 'Budi Rusak Excel', '6.28128E+12', 'Jl. Rusak No. 1',
+            'JCN-KTU-9999', 'Budi Rusak Excel', '6.28128E+12', 'Jl. Rusak No. 1',
             '2026-01-01', 'Bulanan', '10 Mbps', 'ACTIVE',
             '2026-10', '150000', 'UNPAID', '',
         ];

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Pop;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CustomerFactory extends Factory
@@ -10,14 +11,14 @@ class CustomerFactory extends Factory
     {
         static $counter = 1;
 
-        $prefixes = ['SLX-GS', 'SLX-KT', 'SLX-BT', 'SLX-TG'];
-        $prefix   = $this->faker->randomElement($prefixes);
-        $code     = $prefix . '-' . str_pad($counter++, 5, '0', STR_PAD_LEFT);
+        $pop = Pop::first() ?? Pop::factory()->create();
+        $code = sprintf('JCN-%s-%04d', $pop->code, $counter++);
 
         // Random Indonesian phone number in 62xxx format
         $phone = '628' . $this->faker->numerify('#########');
 
         return [
+            'pop_id'         => $pop->id,
             'customer_code'  => $code,
             'name'           => $this->faker->name(),
             'phone'          => $phone,

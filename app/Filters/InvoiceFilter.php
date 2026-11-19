@@ -11,18 +11,27 @@ class InvoiceFilter
 
     public static function apply(Builder $query, array $filters): Builder
     {
+        $user = $filters['user'] ?? auth()->user();
+        if ($user) {
+            $query->visibleTo($user);
+        }
+
+        if (! empty($filters['pop_id']) && is_numeric($filters['pop_id'])) {
+            $query->whereHas('customer', fn ($q) => $q->where('customers.pop_id', (int) $filters['pop_id']));
+        }
+
         // Filter by customer_id if provided
         $customerId = $filters['customer_id'] ?? null;
-        if ($customerId) {
-            $query->where('customer_id', $customerId);
+        if ($customerId && is_numeric($customerId)) {
+            $query->where('customer_id', (int) $customerId);
         }
 
         // Optional: filter by customer code / name (used by export from show page)
-        $search = $filters['search'] ?? null;
+        $search = $filters['q'] ?? $filters['search'] ?? null;
         if (is_array($search)) {
             $search = $search['value'] ?? null;
         }
-        $search = is_string($search) && trim($search) !== '' ? trim($search) : null;
+        $search = is_string($search) && trim($search) !== '' ? trim(strip_tags($search)) : null;
         if ($search) {
             $query->whereHas('customer', function (Builder $q) use ($search) {
                 $q->where('customer_code', 'like', "%{$search}%")

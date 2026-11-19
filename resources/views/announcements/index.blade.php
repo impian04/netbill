@@ -5,65 +5,53 @@
 @section('content')
 
 {{-- ── Page Header ─────────────────────────────────────────────── --}}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Pengumuman Pelanggan</h1>
-        <p class="page-subtitle">Kelola pesan dan informasi operasional yang tampil pada aplikasi mobile pelanggan</p>
-    </div>
-    <div>
-        <button type="button" class="btn btn-sm btn-primary" id="btn-open-create-announcement">
-            <i class="bi bi-plus-lg me-1"></i>Buat Pengumuman
-        </button>
-    </div>
-</div>
+<x-page-header title="Pengumuman Pelanggan" subtitle="Kelola pesan dan informasi operasional yang tampil pada aplikasi mobile pelanggan">
+    <x-slot:actions>
+        <x-btn variant="primary" id="btn-open-create-announcement">Buat Pengumuman</x-btn>
+    </x-slot:actions>
+</x-page-header>
 
 {{-- ── Kartu Filter (row g-2) ──────────────────────────────────── --}}
-<div class="card mb-4">
-    <div class="card-body py-3">
-        <form id="filter-announcements-form" class="row g-2 align-items-center">
-            <div class="col-12 col-lg-5">
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                    <input type="search" id="filter-ann-search" name="search" class="form-control form-control-sm"
-                           placeholder="Cari judul atau isi pengumuman...">
-                </div>
+<x-filter-card>
+    <form id="filter-announcements-form" class="row g-2 align-items-center">
+        <div class="col-12 col-lg-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"></span>
+                <input type="search" id="filter-ann-search" name="search" class="form-control form-control-sm"
+                       placeholder="Cari judul atau isi pengumuman...">
             </div>
+        </div>
 
-            <div class="col-6 col-lg-3">
-                <select name="status" id="filter-ann-status" class="form-select form-select-sm">
-                    <option value="">Semua Status Tayang</option>
-                    <option value="1">Aktif</option>
-                    <option value="0">Nonaktif</option>
-                </select>
-            </div>
+        <div class="col-6 col-lg-3">
+            <select name="status" id="filter-ann-status" class="form-select form-select-sm">
+                <option value="">Semua Status Tayang</option>
+                <option value="1">Aktif</option>
+                <option value="0">Nonaktif</option>
+            </select>
+        </div>
 
-            <div class="col-6 col-lg-2 ms-lg-auto text-end">
-                <button type="button" id="btn-reset-ann-filter" class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+        <div class="col-6 col-lg-2 ms-lg-auto text-end">
+            <x-btn variant="neutral" id="btn-reset-ann-filter" class="w-100">Reset</x-btn>
+        </div>
+    </form>
+</x-filter-card>
 
 {{-- ── Kartu Tabel DataTables Server-Side ───────────────────────── --}}
-<div class="card">
-    <div class="card-body p-3">
-        <table id="announcements-table" class="table table-hover align-middle mb-0 w-100">
-            <thead>
-                <tr>
-                    <th>Judul Pengumuman</th>
-                    <th class="text-center" style="width: 100px;">Status</th>
-                    <th>Tayang Mulai</th>
-                    <th>Kedaluwarsa</th>
-                    <th class="d-none d-lg-table-cell">Dibuat Pada</th>
-                    <th class="text-end" style="width: 80px;">Aksi</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
+<x-table-card>
+    <table id="announcements-table" class="table table-hover align-middle mb-0 w-100">
+        <thead>
+            <tr>
+                <th>Judul Pengumuman</th>
+                <th class="text-center" style="width: 100px;">Status</th>
+                <th>Tayang Mulai</th>
+                <th>Kedaluwarsa</th>
+                <th class="d-none d-lg-table-cell">Dibuat Pada</th>
+                <th class="text-end" style="width: 80px;">Aksi</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</x-table-card>
 
 {{-- ── Offcanvas Form Pengumuman (Tambah & Ubah) ────────────────── --}}
 @include('announcements.partials.offcanvas')
@@ -98,12 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: 'is_active',
                 name: 'is_active',
                 className: 'text-center',
-                render: function (data) {
-                    if (data) {
-                        return '<span class="badge bg-success">Aktif</span>';
-                    }
-                    return '<span class="badge bg-secondary">Nonaktif</span>';
-                }
+                render: function (data) { return window.statusBadge('active_status', data ? 'ACTIVE' : 'INACTIVE'); }
             },
             {
                 data: 'published_at',
@@ -134,18 +117,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 orderable: false,
                 className: 'text-end text-nowrap',
                 render: function (data, type, row) {
-                    return `
-                        <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-secondary py-1 px-2 btn-edit-announcement"
-                                    data-id="${row.id}" data-url="${row.urls.show}" title="Ubah Pengumuman">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-danger py-1 px-2 btn-delete-announcement"
-                                    data-url="${row.urls.delete}" data-title="${window.escapeHtml(row.title)}" title="Hapus Pengumuman">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    `;
+                    return `<div class="d-flex justify-content-end gap-1">
+                        ${window.btnIconHtml('edit', { class: 'btn-edit-announcement', 'data-id': row.id, 'data-url': row.urls.show, title: 'Ubah Pengumuman' })}
+                        ${window.btnIconHtml('delete', { class: 'btn-delete-announcement', 'data-url': row.urls.delete, 'data-title': window.escapeHtml(row.title), title: 'Hapus Pengumuman' })}
+                    </div>`;
                 }
             }
         ]

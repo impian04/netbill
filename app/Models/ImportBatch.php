@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class ImportBatch extends Model
 {
     protected $fillable = [
+        'user_id',
+        'pop_id',
         'file_path',
         'original_name',
         'duplicate_policy',
@@ -21,6 +23,16 @@ class ImportBatch extends Model
         'started_at',
         'finished_at',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function pop()
+    {
+        return $this->belongsTo(Pop::class);
+    }
 
     protected function casts(): array
     {

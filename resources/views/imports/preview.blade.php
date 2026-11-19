@@ -5,9 +5,9 @@
 @section('content')
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('imports.index') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Batal
-    </a>
+    <x-btn variant="neutral" href="{{ route('imports.index') }}"  >
+        Batal
+    </x-btn>
     <div>
         <h1 class="h4 fw-bold mb-0">Pratinjau Import</h1>
         <p class="text-muted small mb-0">
@@ -21,14 +21,14 @@
 {{-- Preview table --}}
 <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-table me-2"></i>Pratinjau Data (10 Baris Pertama)</span>
+        <span>Pratinjau Data (10 Baris Pertama)</span>
         @if ($preview['total_rows'] > 10)
             <span class="badge bg-secondary">+{{ $preview['total_rows'] - 10 }} baris lainnya</span>
         @endif
     </div>
     <div class="card-body p-0">
         <div class="table-responsive" style="max-height:360px;overflow-y:auto;">
-            <table class="table table-sm table-hover mb-0" style="font-size:.8rem;" id="preview-table">
+            <table class="table table-sm table-hover mb-0" id="preview-table">
                 <thead class="sticky-top">
                     <tr>
                         <th class="text-muted" style="width:40px;">#</th>
@@ -57,7 +57,7 @@
 {{-- Confirmation form --}}
 <div class="card">
     <div class="card-header">
-        <i class="bi bi-gear me-2"></i>Konfigurasi Import
+        Konfigurasi Import
     </div>
     <div class="card-body">
         <form method="POST" action="{{ route('imports.confirm') }}" id="form-confirm" novalidate>
@@ -99,7 +99,7 @@
                                id="policy-update" class="form-check-input flex-shrink-0">
                         <div>
                             <div class="fw-semibold">
-                                <span class="badge bg-primary me-1">Perbarui</span>
+                                <span class="badge bg-info me-1">Perbarui</span>
                                 Timpa dengan data baru
                             </div>
                             <div class="text-muted small">
@@ -115,8 +115,7 @@
             </div>
 
             {{-- Summary before confirm --}}
-            <div class="alert alert-warning d-flex gap-2 py-2 mb-3" style="font-size:.83rem;">
-                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+            <div class="alert alert-warning d-flex gap-2 py-2 mb-3">
                 <span>
                     Proses akan menjalankan <strong>{{ number_format($preview['total_rows']) }}</strong> baris
                     di background. Halaman status akan diperbarui otomatis. Jangan tutup browser sampai selesai.
@@ -124,10 +123,10 @@
             </div>
 
             <div class="d-flex gap-2">
-                <button type="submit" id="btn-confirm" class="btn btn-primary">
-                    <i class="bi bi-play-circle me-1"></i>Mulai Import
-                </button>
-                <a href="{{ route('imports.index') }}" class="btn btn-outline-secondary">Batal</a>
+                <x-btn type="submit" variant="primary"   id="btn-confirm"  >
+                    Mulai Import
+                </x-btn>
+                <x-btn variant="neutral" href="{{ route('imports.index') }}"  >Batal</x-btn>
             </div>
         </form>
     </div>

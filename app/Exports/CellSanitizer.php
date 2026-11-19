@@ -4,7 +4,7 @@ namespace App\Exports;
 
 /**
  * Prevents CSV formula injection by prefixing dangerous leading characters.
- * Only triggers on: = + - @ \t \r — NOT on alphanumeric IDs like "SLX-GS-00001".
+ * Only triggers on: = + - @ \t \r — NOT on alphanumeric IDs like "JCN-KTU-0001".
  */
 class CellSanitizer
 {

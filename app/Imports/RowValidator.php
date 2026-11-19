@@ -26,16 +26,24 @@ class RowValidator
     private const VALID_SERVICE_STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'INACTIVE'];
 
     /** Returns array of error strings, empty = valid */
-    public static function validate(array $row): array
+    public static function validate(array $row, ?\App\Models\User $user = null): array
     {
         $errors = [];
 
-        // ID Pelanggan
-        $code = trim($row['id_pelanggan'] ?? '');
+        // ID Pelanggan (format ^JCN-[A-Z]{2,4}-\d{4,5}$)
+        $code = strtoupper(trim((string) ($row['id_pelanggan'] ?? '')));
         if ($code === '') {
             $errors[] = 'ID Pelanggan kosong';
-        } elseif (! preg_match('/^[A-Z0-9\-]+$/i', $code)) {
-            $errors[] = 'ID Pelanggan tidak valid: "' . $code . '"';
+        } elseif (! preg_match('/^JCN-([A-Z]{2,4})-(\d{4,5})$/', $code, $matches)) {
+            $errors[] = 'ID Pelanggan tidak valid: "' . $code . '" (format: JCN-{KODE_POP}-{NOMOR})';
+        } else {
+            $popCode = $matches[1];
+            $pop = \App\Models\Pop::where('code', $popCode)->first();
+            if (! $pop) {
+                $errors[] = "POP {$popCode} tidak ditemukan di sistem.";
+            } elseif ($user && ! $user->isSuperAdmin() && (int) $user->pop_id !== (int) $pop->id) {
+                $errors[] = "Anda tidak memiliki hak untuk mengimpor data ke POP {$popCode}.";
+            }
         }
 
         // Nama
@@ -89,6 +97,24 @@ class RowValidator
         $svcStatus = strtoupper(trim($row['status_layanan'] ?? 'ACTIVE'));
         if ($svcStatus !== '' && ! in_array($svcStatus, self::VALID_SERVICE_STATUSES, true)) {
             $errors[] = 'Status Layanan tidak valid: "' . ($row['status_layanan'] ?? '') . '" (gunakan ACTIVE/PENDING/SUSPENDED/INACTIVE)';
+        } elseif ($svcStatus === 'PENDING') {
+            $errors[] = 'Tagihan tidak dapat dibuat untuk pelanggan berstatus PENDING (menunggu pemasangan).';
+        }
+
+        // Latitude (optional)
+        $lat = trim((string) ($row['latitude'] ?? ''));
+        if ($lat !== '') {
+            if (! is_numeric($lat) || (float) $lat < -11.5 || (float) $lat > 6.5) {
+                $errors[] = 'Latitude harus berada di wilayah Indonesia (-11.5 s/d 6.5): "' . $lat . '"';
+            }
+        }
+
+        // Longitude (optional)
+        $lng = trim((string) ($row['longitude'] ?? ''));
+        if ($lng !== '') {
+            if (! is_numeric($lng) || (float) $lng < 94.0 || (float) $lng > 141.5) {
+                $errors[] = 'Longitude harus berada di wilayah Indonesia (94.0 s/d 141.5): "' . $lng . '"';
+            }
         }
 
         // Periode

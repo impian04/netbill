@@ -34,15 +34,16 @@
 
     {{-- Main content --}}
     <main id="main-content">
-        <div class="container-fluid p-0">
-            @yield('content')
-        </div>
+        @yield('content')
     </main>
 
     {{-- Sidebar overlay (mobile) --}}
     <div id="sidebar-overlay" class="d-lg-none" style="display:none!important;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1039;" onclick="closeSidebar()"></div>
 
     <script>
+        window.UI_CONFIG = {
+            badges: @json(config('ui.badges'))
+        };
         function openSidebar()  { document.getElementById('sidebar').classList.add('show'); document.getElementById('sidebar-overlay').style.removeProperty('display'); }
         function closeSidebar() { document.getElementById('sidebar').classList.remove('show'); document.getElementById('sidebar-overlay').style.setProperty('display','none','important'); }
     </script>

@@ -41,6 +41,18 @@ class StoreInvoiceRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $customer = $this->route('customer')
+                ?? ($this->customer_id ? \App\Models\Customer::find($this->customer_id) : null);
+
+            if ($customer && $customer->service_status === 'PENDING') {
+                $validator->errors()->add('customer_id', 'Tagihan tidak dapat dibuat untuk pelanggan berstatus PENDING (menunggu pemasangan).');
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [

@@ -11,14 +11,31 @@ class CustomerFilter
 
     public static function apply(Builder $query, array $filters): Builder
     {
-        $search = $filters['search'] ?? null;
+        $user = $filters['user'] ?? auth()->user();
+        if ($user) {
+            $query->visibleTo($user);
+        }
+
+        if (! empty($filters['pop_id']) && is_numeric($filters['pop_id'])) {
+            $query->where('customers.pop_id', (int) $filters['pop_id']);
+        }
+
+        if (! empty($filters['odc_id']) && is_numeric($filters['odc_id'])) {
+            $query->where('customers.odc_id', (int) $filters['odc_id']);
+        }
+
+        if (! empty($filters['odp_id']) && is_numeric($filters['odp_id'])) {
+            $query->where('customers.odp_id', (int) $filters['odp_id']);
+        }
+
+        $search = $filters['q'] ?? $filters['search'] ?? null;
         if (is_array($search)) {
             $search = $search['value'] ?? null;
         }
-        self::search($query, is_string($search) && trim($search) !== '' ? trim($search) : null);
+        self::search($query, is_string($search) && trim($search) !== '' ? trim(strip_tags($search)) : null);
         self::filterPackage($query, $filters['package'] ?? null);
         self::filterBillingType($query, $filters['billing_type'] ?? null);
-        self::filterServiceStatus($query, $filters['service_status'] ?? null);
+        self::filterServiceStatus($query, $filters['status'] ?? $filters['service_status'] ?? null);
         self::filterByInvoice(
             $query,
             $filters['period'] ?? null,

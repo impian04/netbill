@@ -1,0 +1,154 @@
+{
+  "pageTitle": {
+    "fontSize": "20px",
+    "fontWeight": "700",
+    "lineHeight": "24px",
+    "color": "rgb(15, 23, 42)"
+  },
+  "pageSubtitle": {
+    "fontSize": "13.6px",
+    "fontWeight": "400",
+    "lineHeight": "20.4px",
+    "color": "rgb(100, 116, 139)"
+  },
+  "cardTitle": null,
+  "tableTh": {
+    "fontSize": "12.48px",
+    "fontWeight": "600",
+    "lineHeight": "18.72px",
+    "color": "rgb(71, 85, 105)"
+  },
+  "tableTd": {
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "21px",
+    "color": "rgb(0, 0, 0)"
+  },
+  "dtInfo": null,
+  "dtPagination": null,
+  "formLabel": {
+    "fontSize": "14px",
+    "fontWeight": "600",
+    "lineHeight": "21px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "formControl": {
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "21px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "formHelp": {
+    "fontSize": "12.48px",
+    "fontWeight": "600",
+    "lineHeight": "18.72px",
+    "color": "rgba(33, 37, 41, 0.75)"
+  },
+  "btnSm": {
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "21px",
+    "color": "rgb(252, 165, 165)"
+  },
+  "badge": {
+    "fontSize": "10.8px",
+    "fontWeight": "700",
+    "lineHeight": "10.8px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "sidebarNav": {
+    "fontSize": "14.4px",
+    "fontWeight": "400",
+    "lineHeight": "21.6px",
+    "color": "rgb(203, 213, 225)"
+  },
+  "topbarUser": null,
+  "offcanvasTitle": {
+    "fontSize": "17.6px",
+    "fontWeight": "700",
+    "lineHeight": "26.4px",
+    "color": "rgb(15, 23, 42)"
+  },
+  "offcanvasLabel": {
+    "fontSize": "14px",
+    "fontWeight": "600",
+    "lineHeight": "21px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "offcanvasControl": {
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "21px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "offcanvasHelp": {
+    "fontSize": "11.52px",
+    "fontWeight": "400",
+    "lineHeight": "17.28px",
+    "color": "rgba(33, 37, 41, 0.75)"
+  },
+  "offcanvasError": {
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "21px",
+    "color": "rgb(220, 53, 69)"
+  },
+  "statValue": {
+    "fontSize": "24px",
+    "fontWeight": "700",
+    "lineHeight": "24px",
+    "color": "rgb(13, 110, 253)"
+  },
+  "statLabel": {
+    "fontSize": "12.8px",
+    "fontWeight": "400",
+    "lineHeight": "19.2px",
+    "color": "rgb(100, 116, 139)"
+  },
+  "statHelp": null,
+  "taskCardTitle": {
+    "fontSize": "16px",
+    "fontWeight": "900",
+    "lineHeight": "24px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "taskCardBody": {
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "taskCardBadge": {
+    "fontSize": "12px",
+    "fontWeight": "700",
+    "lineHeight": "12px",
+    "color": "rgb(33, 37, 41)"
+  },
+  "toast": {
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "color": "rgb(84, 84, 84)"
+  },
+  "sweetAlert": {
+    "title": {
+      "fontSize": "30px",
+      "fontWeight": "600",
+      "lineHeight": "36px",
+      "color": "rgb(84, 84, 84)"
+    },
+    "content": {
+      "fontSize": "18px",
+      "fontWeight": "400",
+      "lineHeight": "normal",
+      "color": "rgb(84, 84, 84)"
+    },
+    "button": {
+      "fontSize": "16px",
+      "fontWeight": "500",
+      "lineHeight": "24px",
+      "color": "rgb(255, 255, 255)"
+    }
+  },
+  "emptyState": null
+}

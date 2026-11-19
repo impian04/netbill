@@ -2,9 +2,16 @@
 
 namespace App\Providers;
 
+use App\Enums\SurveyResult;
+use App\Enums\SurveyStatus;
+use App\Enums\WorkOrderStatus;
+use App\Models\Customer;
+use App\Models\Survey;
+use App\Models\WorkOrder;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -45,6 +52,30 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($key)->response(function () {
                 return response()->json(['message' => 'Terlalu banyak permintaan. Coba lagi sebentar lagi.'], 429);
             });
+        });
+
+        // View Composers untuk partial offcanvas form agar aman di semua halaman (Fase 17f)
+        View::composer('customers.partials.offcanvas', \App\View\Composers\CustomerOffcanvasComposer::class);
+        View::composer('staff.partials.offcanvas', \App\View\Composers\StaffOffcanvasComposer::class);
+        View::composer('invoices.partials.offcanvas', \App\View\Composers\InvoiceOffcanvasComposer::class);
+
+        // Sidebar menu & badge counts via MenuService (Single Source of Truth)
+        View::composer('layouts.partials.sidebar', function ($view) {
+            $user = auth()->user();
+            if (! $user) {
+                return;
+            }
+
+            $menuSections = \App\Services\MenuService::getMenuSections($user);
+            $badges = \App\Services\MenuService::calculateBadges($user);
+
+            $view->with([
+                'menuSections'                      => $menuSections,
+                'sidebarUnassignedSurveysCount'     => $badges['unassigned_surveys'],
+                'sidebarPendingWorkOrdersCount'     => $badges['pending_work_orders'],
+                'sidebarSurveyQueueCount'           => $badges['survey_queue'],
+                'sidebarTechnicianActiveTasksCount' => $badges['technician_active_tasks'],
+            ]);
         });
     }
 }

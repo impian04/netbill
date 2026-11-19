@@ -29,7 +29,19 @@ class ImportController extends Controller
 
     public function index(): View
     {
-        $batches = ImportBatch::latest()->limit(15)->get();
+        $user = auth()->user();
+        $query = ImportBatch::latest();
+
+        if (! $user->isSuperAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+                if ($user->pop_id) {
+                    $q->orWhere('pop_id', $user->pop_id);
+                }
+            });
+        }
+
+        $batches = $query->limit(15)->get();
 
         return view('imports.index', compact('batches'));
     }
@@ -54,14 +66,16 @@ class ImportController extends Controller
     {
         $headers = ImportTemplateExport::HEADERS;
         $example = [
-            'SLX-GS-00001', 'Budi Santoso', '08123456789',
+            'JCN-KTU-0001', 'Budi Santoso', '08123456789',
             'Jl. Merdeka No. 10, Kel. Sukamaju',
             '2023-01-15', 'Bulanan', '10 Mbps', 'ACTIVE', '2026-10', '220000', 'UNPAID', '2026-10-20',
+            '0.5071000', '101.4478000',
         ];
         $example2 = [
-            'SLX-GS-00002', 'Siti Rahayu', '08987654321',
+            'JCN-KTU-0002', 'Siti Rahayu', '08987654321',
             'Jl. Pahlawan No. 5, RT 02/03',
             '2022-06-01', 'Bulanan', '20 Mbps', 'ACTIVE', '2026-10', '330000', 'PAID', '',
+            '0.5123000', '101.4512000',
         ];
 
         return response()->streamDownload(function () use ($headers, $example, $example2) {
@@ -207,6 +221,8 @@ class ImportController extends Controller
         }
 
         $batch = ImportBatch::create([
+            'user_id'          => auth()->id(),
+            'pop_id'           => auth()->user()?->pop_id,
             'file_path'        => $data['file_path'],
             'original_name'    => $data['original_name'],
             'duplicate_policy' => $request->duplicate_policy,
@@ -215,6 +231,8 @@ class ImportController extends Controller
 
         session()->forget($sessionKey);
 
+        \App\Services\ActivityLogger::log('import.confirm', "Menjadwalkan import file '{$batch->original_name}'", $batch);
+
         ProcessImport::dispatch($batch);
 
         return redirect()->route('imports.show', $batch)
@@ -222,8 +240,23 @@ class ImportController extends Controller
     }
 
     /** Show batch status / results */
-    public function show(ImportBatch $importBatch): View
+    public function show(Request $request, ImportBatch $importBatch): View|\Illuminate\Http\JsonResponse
     {
+        $user = auth()->user();
+
+        if (! $user->isSuperAdmin()) {
+            $isOwner   = (int) $importBatch->user_id === (int) $user->id;
+            $isSamePop = $importBatch->pop_id && (int) $importBatch->pop_id === (int) $user->pop_id;
+
+            if (! $isOwner && ! $isSamePop) {
+                abort(404);
+            }
+        }
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json($importBatch);
+        }
+
         return view('imports.show', ['batch' => $importBatch]);
     }
 

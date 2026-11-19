@@ -14,14 +14,21 @@ class Customer extends Model
     public const SERVICE_STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'INACTIVE'];
 
     protected $fillable = [
+        'pop_id',
+        'odc_id',
+        'odp_id',
         'customer_code',
         'name',
         'phone',
         'address',
+        'latitude',
+        'longitude',
         'subscribed_at',
         'package',
         'billing_type',
         'service_status',
+        'registered_via',
+        // NOTE: ktp_path and referred_by_user_id are NOT mass-assignable
         // NOTE: password, activation_code_hash, activated_at,
         //       activation_expires_at, activation_attempts are NOT mass-assignable
     ];
@@ -31,6 +38,11 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
+            'pop_id'                  => 'integer',
+            'odc_id'                  => 'integer',
+            'odp_id'                  => 'integer',
+            'latitude'                => 'float',
+            'longitude'               => 'float',
             'subscribed_at'           => 'date',
             'activated_at'            => 'datetime',
             'activation_expires_at'   => 'datetime',
@@ -40,9 +52,79 @@ class Customer extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Customer $customer) {
+            if ($customer->ktp_path) {
+                \App\Services\PrivateFileService::delete($customer->ktp_path);
+            }
+        });
+
+        static::saved(function (Customer $customer) {
+            if ($customer->service_status === 'ACTIVE') {
+                if ($customer->wasRecentlyCreated || $customer->wasChanged('service_status')) {
+                    \App\Services\MarketingFeeService::processEligibility($customer);
+                }
+            }
+        });
+    }
+
+    public function pop(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Pop::class);
+    }
+
+    public function odc(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Odc::class);
+    }
+
+    public function odp(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Odp::class);
+    }
+
+    public function survey(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Survey::class);
+    }
+
+    public function workOrder(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(WorkOrder::class)->where('type', \App\Enums\WorkOrderType::INSTALLATION);
+    }
+
+    public function workOrders(): HasMany
+    {
+        return $this->hasMany(WorkOrder::class);
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    public function referredBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'referred_by_user_id');
+    }
+
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function scopeVisibleTo(\Illuminate\Database\Eloquent\Builder $query, ?User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        if (! $user) {
+            return $query;
+        }
+
+        if ($user->role === \App\Enums\Role::SUPER_ADMIN) {
+            return $query;
+        }
+
+        return $query->where('customers.pop_id', $user->pop_id);
     }
 
     // ── Activation helpers ────────────────────────────────────────────

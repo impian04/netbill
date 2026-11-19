@@ -1,32 +1,31 @@
-<div class="offcanvas offcanvas-end crud-offcanvas" tabindex="-1" id="offcanvas-customer" data-bs-scroll="true" data-bs-backdrop="true" aria-labelledby="offcanvasCustomerTitle">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="offcanvasCustomerTitle">Tambah Pelanggan</h5>
-        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
-    </div>
-
-    <form id="form-customer" novalidate>
-        @csrf
-        <input type="hidden" name="_method" value="POST">
-
-        <div class="offcanvas-body">
-            <div class="row g-3">
-                {{-- Prefix & Kode Pelanggan (col-6 berpasangan) --}}
+<x-offcanvas-form id="offcanvas-customer" formId="form-customer" title="Tambah Pelanggan" titleId="offcanvasCustomerTitle" submitId="btn-submit-customer" submitText="Simpan">
+    <div class="row g-3">
+        {{-- POP & Kode Pelanggan (col-6 berpasangan) --}}
                 <div class="col-6">
-                    <label for="cust_code_prefix" class="form-label small fw-semibold text-muted">Prefix Kode</label>
-                    <input type="text" id="cust_code_prefix" name="code_prefix"
-                           class="form-control form-control-sm font-monospace"
-                           value="SLX-GS" placeholder="SLX-GS">
-                    <div class="form-text" style="font-size:0.72rem;">Ubah untuk saran otomatis.</div>
+                    <label for="cust_pop_id" class="form-label small fw-semibold">
+                        POP <span class="text-danger">*</span>
+                    </label>
+                    @if(auth()->user()->isSuperAdmin())
+                        <select name="pop_id" id="cust_pop_id" class="form-select form-select-sm" required>
+                            @foreach($pops ?? [] as $pop)
+                                <option value="{{ $pop->id }}">POP {{ $pop->code }} - {{ $pop->name }}</option>
+                            @endforeach
+                        </select>
+                    @else
+                        <input type="hidden" name="pop_id" id="cust_pop_id" value="{{ auth()->user()->pop_id }}">
+                        <input type="text" class="form-control form-control-sm bg-light" value="POP {{ auth()->user()->pop?->code }} - {{ auth()->user()->pop?->name }}" readonly>
+                    @endif
+                    <div class="invalid-feedback"></div>
                 </div>
 
                 <div class="col-6">
                     <label for="cust_customer_code" class="form-label small fw-semibold">
-                        Kode Pelanggan <span class="text-danger">*</span>
+                        Kode Pelanggan
                     </label>
                     <input type="text" id="cust_customer_code" name="customer_code"
-                           class="form-control form-control-sm font-monospace text-uppercase"
-                           placeholder="SLX-GS-00001" required>
-                    <div class="invalid-feedback"></div>
+                           class="form-control form-control-sm font-monospace text-uppercase bg-light"
+                           placeholder="JCN-KTU-0001 (Otomatis)" readonly>
+                    <div class="form-text">Dibuat otomatis oleh sistem.</div>
                 </div>
 
                 {{-- Nama Pelanggan --}}
@@ -60,7 +59,34 @@
                     </label>
                     <select id="cust_service_status" name="service_status" class="form-select form-select-sm" required>
                         @foreach (\App\Models\Customer::SERVICE_STATUSES as $ss)
-                            <option value="{{ $ss }}">{{ $ss }}</option>
+                            <option value="{{ $ss }}" {{ $ss === 'PENDING' ? 'selected' : '' }}>{{ $ss }}</option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                {{-- ODC & ODP (col-6 berpasangan) --}}
+                <div class="col-6">
+                    <label for="cust_odc_id" class="form-label small fw-semibold">
+                        ODC
+                    </label>
+                    <select name="odc_id" id="cust_odc_id" class="form-select form-select-sm">
+                        <option value="">Pilih ODC</option>
+                        @foreach ($odcs ?? [] as $odc)
+                            <option value="{{ $odc->id }}" data-pop-id="{{ $odc->pop_id }}">{{ $odc->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <div class="col-6">
+                    <label for="cust_odp_id" class="form-label small fw-semibold">
+                        ODP
+                    </label>
+                    <select name="odp_id" id="cust_odp_id" class="form-select form-select-sm" disabled>
+                        <option value="">Pilih ODP (Pilih ODC dahulu)</option>
+                        @foreach ($odps ?? [] as $odp)
+                            <option value="{{ $odp->id }}" data-pop-id="{{ $odp->pop_id }}" data-odc-id="{{ $odp->odc_id }}">{{ $odp->name }}</option>
                         @endforeach
                     </select>
                     <div class="invalid-feedback"></div>
@@ -107,6 +133,26 @@
                     <div class="invalid-feedback"></div>
                 </div>
 
+                {{-- Koordinat Lokasi --}}
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="cust_coordinates" class="form-label small fw-semibold mb-0">
+                            Koordinat Lokasi (Latitude, Longitude)
+                        </label>
+                        <x-btn variant="neutral" size="sm" id="btn-get-current-loc" class="py-0 px-2 fs-xs">
+                            Gunakan Lokasi Saya
+                        </x-btn>
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <input type="text" id="cust_coordinates" name="coordinates" class="form-control form-control-sm font-monospace" placeholder="Contoh: 0.5071, 101.4478">
+                        <x-btn variant="neutral" size="sm" href="#" target="_blank" rel="noopener noreferrer" class="d-none" id="btn-open-map-link" title="Buka di Google Maps">
+                            Buka di Peta
+                        </x-btn>
+                    </div>
+                    <div class="form-text">Derajat desimal: lat (-11.5 s/d 6.5), lng (94.0 s/d 141.5). Pisahkan koma atau spasi.</div>
+                    <div class="invalid-feedback"></div>
+                </div>
+
                 {{-- Alamat --}}
                 <div class="col-12">
                     <label for="cust_address" class="form-label small fw-semibold">
@@ -117,14 +163,27 @@
                               placeholder="Alamat jalan, nomor rumah, RT/RW, kelurahan" required></textarea>
                     <div class="invalid-feedback"></div>
                 </div>
-            </div>
-        </div>
 
-        <div class="offcanvas-footer">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="offcanvas">Batal</button>
-            <button type="submit" class="btn btn-sm btn-primary px-3" id="btn-submit-customer">
-                <i class="bi bi-save me-1"></i>Simpan
-            </button>
-        </div>
-    </form>
-</div>
+                {{-- Berkas KTP --}}
+                <div class="col-12">
+                    <label for="cust_ktp_file" class="form-label small fw-semibold">
+                        Berkas KTP (Foto/Scan)
+                    </label>
+                    <div id="cust_ktp_preview_wrapper" class="mb-2 p-2 border rounded bg-light d-none align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <div>
+                                <a href="#" target="_blank" rel="noopener noreferrer" id="cust_ktp_view_link" class="small fw-semibold text-decoration-none">Lihat Berkas KTP Tersimpan</a>
+                                <div class="text-muted fs-xs">Tersimpan privat & aman.</div>
+                            </div>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="checkbox" id="cust_delete_ktp" name="delete_ktp" value="1">
+                            <label class="form-check-label small text-danger" for="cust_delete_ktp">Hapus KTP</label>
+                        </div>
+                    </div>
+                    <input type="file" id="cust_ktp_file" name="ktp_file" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp">
+                    <div class="form-text fs-xs">Format JPG, PNG, atau WebP (maks. 3 MB). Metadata lokasi/EXIF otomatis dihapus.</div>
+                    <div class="invalid-feedback"></div>
+                </div>
+    </div>
+</x-offcanvas-form>

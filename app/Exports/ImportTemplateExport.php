@@ -13,6 +13,7 @@ class ImportTemplateExport
         'ID Pelanggan', 'Nama', 'Nomor Telepon', 'Alamat',
         'Tanggal Mulai Berlangganan', 'Jenis Tagihan', 'Paket', 'Status Layanan',
         'Periode', 'Nominal Ditangguhkan', 'Status', 'Jatuh Tempo',
+        'Latitude', 'Longitude',
     ];
 
     public static function build(): Spreadsheet
@@ -25,7 +26,7 @@ class ImportTemplateExport
 
         // Headers
         $sheet->fromArray(self::HEADERS, null, 'A1');
-        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:N1')->getFont()->setBold(true);
         $sheet->freezePane('A2');
 
         // Column formats for all data rows (up to row 1000)
@@ -39,12 +40,15 @@ class ImportTemplateExport
         $sheet->getStyle('I1:I1000')->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
         // Nominal (J)
         $sheet->getStyle('J1:J1000')->getNumberFormat()->setFormatCode('#,##0');
+        // Latitude & Longitude (M, N)
+        $sheet->getStyle('M1:N1000')->getNumberFormat()->setFormatCode('0.0000000');
 
         // Column widths
         $widths = [
             'A' => 18, 'B' => 24, 'C' => 20, 'D' => 36,
             'E' => 26, 'F' => 16, 'G' => 18, 'H' => 18,
             'I' => 16, 'J' => 22, 'K' => 14, 'L' => 18,
+            'M' => 16, 'N' => 16,
         ];
         foreach ($widths as $col => $w) {
             $sheet->getColumnDimension($col)->setWidth($w);
@@ -52,14 +56,16 @@ class ImportTemplateExport
 
         // 2 Example rows
         $example1 = [
-            'SLX-GS-00001', 'Budi Santoso', '08123456789', 'Jl. Merdeka No. 10, Kel. Sukamaju',
+            'JCN-KTU-0001', 'Budi Santoso', '08123456789', 'Jl. Merdeka No. 10, Kel. Sukamaju',
             '2023-01-15', 'Bulanan', '10 Mbps', 'ACTIVE',
             '2026-10', 220000, 'UNPAID', '2026-10-20',
+            0.5071000, 101.4478000,
         ];
         $example2 = [
-            'SLX-GS-00002', 'Siti Rahayu', '08987654321', 'Jl. Pahlawan No. 5, RT 02/03',
+            'JCN-KTU-0002', 'Siti Rahayu', '08987654321', 'Jl. Pahlawan No. 5, RT 02/03',
             '2022-06-01', 'Bulanan', '20 Mbps', 'ACTIVE',
             '2026-10', 330000, 'PAID', '',
+            0.5123000, 101.4512000,
         ];
 
         self::writeExampleRow($sheet, 2, $example1);
@@ -106,7 +112,7 @@ class ImportTemplateExport
         $guide->freezePane('A2');
 
         $instructions = [
-            ['ID Pelanggan', 'Wajib', 'Teks (@)', 'Kode unik pelanggan (contoh: SLX-GS-00001). Huruf, angka, dan tanda hubung.'],
+            ['ID Pelanggan', 'Wajib', 'Teks (@)', 'Kode unik pelanggan (contoh: JCN-KTU-0001). Format: JCN-{KODE_POP}-{NOMOR}.'],
             ['Nama', 'Wajib', 'Teks', 'Nama lengkap pelanggan.'],
             ['Nomor Telepon', 'Opsional', 'Teks (@)', 'Nomor HP/WhatsApp (contoh: 08123456789 atau 628123456789). Wajib berformat Teks agar angka 0 di depan tidak hilang.'],
             ['Alamat', 'Wajib', 'Teks', 'Alamat lengkap pemasangan.'],
@@ -118,6 +124,8 @@ class ImportTemplateExport
             ['Nominal Ditangguhkan', 'Wajib', 'Angka', 'Nominal tagihan dalam Rupiah tanpa titik/koma (contoh: 220000).'],
             ['Status', 'Wajib', 'Pilihan (Dropdown)', 'Status pembayaran tagihan. Pilih: PAID atau UNPAID.'],
             ['Jatuh Tempo', 'Opsional', 'Tanggal (YYYY-MM-DD)', 'Batas waktu pembayaran (contoh: 2026-10-20 atau 20/10/2026). Kosongkan jika tidak ada.'],
+            ['Latitude', 'Opsional', 'Angka Desimal', 'Derajat desimal wilayah Indonesia: -11.5 s/d 6.5 (contoh: 0.5071).'],
+            ['Longitude', 'Opsional', 'Angka Desimal', 'Derajat desimal wilayah Indonesia: 94.0 s/d 141.5 (contoh: 101.4478).'],
         ];
 
         $guide->fromArray($instructions, null, 'A2');
@@ -147,5 +155,11 @@ class ImportTemplateExport
         $sheet->setCellValue("J{$row}", $data[9]);
         $sheet->setCellValue("K{$row}", $data[10]);
         $sheet->setCellValueExplicit("L{$row}", (string) $data[11], DataType::TYPE_STRING);
+        if (isset($data[12])) {
+            $sheet->setCellValue("M{$row}", $data[12]);
+        }
+        if (isset($data[13])) {
+            $sheet->setCellValue("N{$row}", $data[13]);
+        }
     }
 }

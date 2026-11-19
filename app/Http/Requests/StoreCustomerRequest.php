@@ -16,43 +16,108 @@ class StoreCustomerRequest extends FormRequest
         if ($this->phone) {
             $this->merge(['phone' => self::normalizePhone($this->phone)]);
         }
-        // Auto-generate customer_code from prefix + next sequence
-        if (! $this->customer_code && $this->code_prefix) {
-            $this->merge(['customer_code' => $this->resolveNextCode($this->code_prefix)]);
+
+        if ($this->has('coordinates')) {
+            $coords = trim((string) $this->coordinates);
+            if ($coords !== '') {
+                $parts = preg_split('/[,\s]+/', $coords, 2);
+                if (count($parts) === 2 && is_numeric($parts[0]) && is_numeric($parts[1])) {
+                    $this->merge([
+                        'latitude'  => (float) $parts[0],
+                        'longitude' => (float) $parts[1],
+                    ]);
+                } else {
+                    $this->merge([
+                        'latitude'  => 'invalid',
+                        'longitude' => 'invalid',
+                    ]);
+                }
+            } else {
+                $this->merge([
+                    'latitude'  => null,
+                    'longitude' => null,
+                ]);
+            }
         }
     }
 
     public function rules(): array
     {
-        return [
-            'customer_code'  => ['required', 'string', 'max:20', 'unique:customers,customer_code', 'regex:/^[A-Z0-9\-]+$/'],
+        $rules = [
             'name'           => ['required', 'string', 'max:100'],
             'phone'          => ['required', 'string', 'regex:/^62[0-9]{8,13}$/'],
             'address'        => ['required', 'string', 'max:500'],
+            'latitude'       => ['nullable', 'numeric', 'between:-11.5,6.5'],
+            'longitude'      => ['nullable', 'numeric', 'between:94.0,141.5'],
             'subscribed_at'  => ['required', 'date', 'before_or_equal:today'],
             'package'        => ['required', 'string', 'max:50'],
             'billing_type'   => ['required', 'string', 'max:50'],
             'service_status' => ['required', Rule::in(Customer::SERVICE_STATUSES)],
+            'odc_id'         => ['nullable', 'integer', 'exists:odcs,id'],
+            'odp_id'         => ['nullable', 'integer', 'exists:odps,id'],
+            'ktp_file'       => ['nullable', 'file', 'max:3072', 'mimes:jpeg,jpg,png,webp'],
         ];
+
+        if (auth()->user()?->isSuperAdmin()) {
+            $rules['pop_id'] = ['required', 'exists:pops,id'];
+        } else {
+            $rules['pop_id'] = ['nullable'];
+        }
+
+        return $rules;
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $popId = auth()->user()?->isSuperAdmin() ? (int) $this->input('pop_id') : (int) auth()->user()?->pop_id;
+            $odcId = $this->input('odc_id') ? (int) $this->input('odc_id') : null;
+            $odpId = $this->input('odp_id') ? (int) $this->input('odp_id') : null;
+
+            if ($odcId && $popId) {
+                $odcValid = \App\Models\Odc::where('id', $odcId)->where('pop_id', $popId)->exists();
+                if (! $odcValid) {
+                    $validator->errors()->add('odc_id', 'ODC yang dipilih bukan milik POP terkait.');
+                }
+            }
+
+            if ($odpId) {
+                if (! $odcId) {
+                    $validator->errors()->add('odp_id', 'ODC wajib dipilih jika ODP dipilih.');
+                } elseif ($popId) {
+                    $odpValid = \App\Models\Odp::where('id', $odpId)
+                        ->where('odc_id', $odcId)
+                        ->where('pop_id', $popId)
+                        ->exists();
+                    if (! $odpValid) {
+                        $validator->errors()->add('odp_id', 'ODP yang dipilih tidak sesuai dengan ODC atau POP terkait.');
+                    }
+                }
+            }
+        });
     }
 
     public function messages(): array
     {
         return [
-            'customer_code.required'        => 'Kode pelanggan wajib diisi.',
-            'customer_code.unique'          => 'Kode pelanggan sudah digunakan.',
-            'customer_code.regex'           => 'Kode hanya boleh huruf kapital, angka, dan tanda hubung.',
-            'customer_code.max'             => 'Kode pelanggan maksimal 20 karakter.',
+            'pop_id.required'               => 'POP wajib dipilih.',
+            'pop_id.exists'                 => 'POP yang dipilih tidak valid.',
             'name.required'                 => 'Nama pelanggan wajib diisi.',
             'phone.required'                => 'Nomor telepon wajib diisi.',
             'phone.regex'                   => 'Format nomor: 62xxxxxxxxxx (diawali 62, panjang 10-15 digit).',
             'address.required'              => 'Alamat wajib diisi.',
+            'latitude.between'              => 'Latitude harus berada di wilayah Indonesia (-11.5 s/d 6.5). Pastikan format: latitude, longitude.',
+            'latitude.numeric'              => 'Format latitude tidak valid. Contoh: 0.5071',
+            'longitude.between'             => 'Longitude harus berada di wilayah Indonesia (94.0 s/d 141.5). Pastikan format: latitude, longitude.',
+            'longitude.numeric'             => 'Format longitude tidak valid. Contoh: 101.4478',
             'subscribed_at.required'        => 'Tanggal mulai berlangganan wajib diisi.',
             'subscribed_at.before_or_equal' => 'Tanggal tidak boleh melewati hari ini.',
             'package.required'              => 'Paket wajib diisi.',
             'billing_type.required'         => 'Jenis tagihan wajib diisi.',
             'service_status.required'       => 'Status layanan wajib dipilih.',
             'service_status.in'             => 'Status layanan tidak valid.',
+            'ktp_file.max'                  => 'Ukuran berkas KTP maksimal 3 MB.',
+            'ktp_file.mimes'                => 'Format berkas KTP harus JPG, PNG, atau WebP.',
         ];
     }
 
@@ -83,26 +148,5 @@ class StoreCustomerRequest extends FormRequest
         }
 
         return $digits;
-    }
-
-    private function resolveNextCode(string $prefix): string
-    {
-        // Done inside a lock to reduce (not eliminate) race; unique constraint is final guard
-        $prefix = strtoupper(trim($prefix));
-        $last   = Customer::where('customer_code', 'like', $prefix . '-%')
-            ->orderByDesc('customer_code')
-            ->lockForUpdate()
-            ->value('customer_code');
-
-        $next = 1;
-        if ($last) {
-            $parts = explode('-', $last);
-            $last  = end($parts);
-            if (is_numeric($last)) {
-                $next = ((int) $last) + 1;
-            }
-        }
-
-        return $prefix . '-' . str_pad($next, 5, '0', STR_PAD_LEFT);
     }
 }
